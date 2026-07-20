@@ -225,7 +225,7 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Repertorio')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _crearElemento,
+        onPressed: () => _crearOEditarElemento(),
         child: const Icon(Icons.add),
       ),
       body: _elementos.isEmpty
