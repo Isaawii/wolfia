@@ -81,35 +81,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           controller: sc,
                           padding: const EdgeInsets.all(AppSpacing.lg),
                           children: [
-                            Text('Plan de sesión ($m min)', style: Theme.of(previewCtx).textTheme.titleLarge),
+                            Text('Plan de sesión ($m min)',
+                                style:
+                                    Theme.of(previewCtx).textTheme.titleLarge),
                             const SizedBox(height: AppSpacing.md),
                             if ((plan['tareas'] as List).isEmpty)
-                              const Text('No hay tareas planificadas para este tiempo.'),
-                            ...((plan['tareas'] as List<Tarea>).map((t) => ListTile(
+                              const Text(
+                                  'No hay tareas planificadas para este tiempo.'),
+                            ...((plan['tareas'] as List<Tarea>).map((t) =>
+                                ListTile(
                                   title: Text(t.tituloPreparacion),
                                   subtitle: Text(t.tituloSegmento ?? 'General'),
                                   trailing: Text('${t.minutosPlaneados} min'),
                                 ))),
                             const SizedBox(height: AppSpacing.md),
                             Row(children: [
-                              Expanded(child: ElevatedButton(onPressed: () {
-                                Navigator.pop(previewCtx);
-                                _generarSesion(m);
-                              }, child: const Text('Crear sesión'))),
+                              Expanded(
+                                  child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(previewCtx);
+                                        _generarSesion(m);
+                                      },
+                                      child: const Text('Crear sesión'))),
                               const SizedBox(width: AppSpacing.sm),
-                              Expanded(child: OutlinedButton(onPressed: () async {
-                                // Ask how many sessions to create
-                                final qty = await showDialog<int>(context: previewCtx, builder: (dCtx) {
-                                  final ctrl = TextEditingController(text: '1');
-                                  return AlertDialog(backgroundColor: AppColors.surface, title: const Text('¿Cuántas sesiones crear?'), content: TextField(controller: ctrl, keyboardType: TextInputType.number), actions: [TextButton(onPressed: () => Navigator.pop(dCtx, null), child: const Text('Cancelar')), ElevatedButton(onPressed: () => Navigator.pop(dCtx, int.tryParse(ctrl.text.trim())), child: const Text('Crear'))],);
-                                });
-                                if (qty != null && qty > 0) {
-                                  Navigator.pop(previewCtx);
-                                  for (int i = 0; i < qty; i++) {
-                                    await _generarSesion(m);
-                                  }
-                                }
-                              }, child: const Text('Crear varias'))),
+                              Expanded(
+                                  child: OutlinedButton(
+                                      onPressed: () async {
+                                        // Ask how many sessions to create
+                                        final qty = await showDialog<int>(
+                                            context: previewCtx,
+                                            builder: (dCtx) {
+                                              final ctrl =
+                                                  TextEditingController(
+                                                      text: '1');
+                                              return AlertDialog(
+                                                backgroundColor:
+                                                    AppColors.surface,
+                                                title: const Text(
+                                                    '¿Cuántas sesiones crear?'),
+                                                content: TextField(
+                                                    controller: ctrl,
+                                                    keyboardType:
+                                                        TextInputType.number),
+                                                actions: [
+                                                  TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              dCtx, null),
+                                                      child: const Text(
+                                                          'Cancelar')),
+                                                  ElevatedButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                              dCtx,
+                                                              int.tryParse(ctrl
+                                                                  .text
+                                                                  .trim())),
+                                                      child:
+                                                          const Text('Crear'))
+                                                ],
+                                              );
+                                            });
+                                        if (qty != null && qty > 0) {
+                                          Navigator.pop(previewCtx);
+                                          for (int i = 0; i < qty; i++) {
+                                            await _generarSesion(m);
+                                          }
+                                        }
+                                      },
+                                      child: const Text('Crear varias'))),
                             ])
                           ],
                         ),

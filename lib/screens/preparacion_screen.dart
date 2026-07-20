@@ -69,8 +69,10 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     DateTime? fechaObj = _prep?.fechaObjetivo;
     int prioridad = _prep?.prioridad ?? 3;
     String? profesorId = _prep?.profesorId;
-    final tempoActualCtrl = TextEditingController(text: _prep?.tempoActual?.toString() ?? '');
-    final tempoObjetivoCtrl = TextEditingController(text: _prep?.tempoObjetivo?.toString() ?? '');
+    final tempoActualCtrl =
+        TextEditingController(text: _prep?.tempoActual?.toString() ?? '');
+    final tempoObjetivoCtrl =
+        TextEditingController(text: _prep?.tempoObjetivo?.toString() ?? '');
 
     final ok = await showDialog<bool>(
       context: context,
@@ -161,13 +163,15 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: tempoActualCtrl,
-                  decoration: const InputDecoration(labelText: 'Tempo actual (bpm) (opcional)'),
+                  decoration: const InputDecoration(
+                      labelText: 'Tempo actual (bpm) (opcional)'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: tempoObjetivoCtrl,
-                  decoration: const InputDecoration(labelText: 'Tempo objetivo (bpm) (opcional)'),
+                  decoration: const InputDecoration(
+                      labelText: 'Tempo objetivo (bpm) (opcional)'),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -521,7 +525,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   width: width * MediaQuery.of(context).size.width * 0.92,
                   child: Container(
                     decoration: BoxDecoration(
-                          color: _colorForPrioridad(s.prioridad).withValues(alpha: 0.85),
+                      color: _colorForPrioridad(s.prioridad)
+                          .withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -693,8 +698,12 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Asignar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Asignar')),
         ],
       ),
     );
@@ -795,40 +804,51 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                   child: _buildDiagrama()),
             ..._segmentos.map((s) {
-              final objetivosDelSegmento = _objetivos.where((o) => o.segmentoId == s.id).toList();
+              final objetivosDelSegmento =
+                  _objetivos.where((o) => o.segmentoId == s.id).toList();
               return Card(
                 child: ExpansionTile(
                   title: Text(s.nombre),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}'),
+                      Text(
+                          'Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}'),
                       if (s.compasInicio != null || s.compasFin != null)
-                        Text('Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
+                        Text(
+                            'Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
                       if (s.tempoActual != null || s.tempoObjetivo != null)
-                        Text('Tempo: actual ${s.tempoActual ?? '—'} · objetivo ${s.tempoObjetivo ?? '—'}'),
+                        Text(
+                            'Tempo: actual ${s.tempoActual ?? '—'} · objetivo ${s.tempoObjetivo ?? '—'}'),
                     ],
                   ),
                   children: [
                     if (objetivosDelSegmento.isEmpty)
-                      const ListTile(title: Text('Sin objetivos en este segmento'))
+                      const ListTile(
+                          title: Text('Sin objetivos en este segmento'))
                     else
                       ...objetivosDelSegmento.map((o) => ListTile(
                             leading: Checkbox(
                                 value: o.estado == 'cumplido',
                                 onChanged: (_) => _toggleObjetivo(o)),
                             title: Text(o.descripcion),
-                            subtitle: Text('Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'),
+                            subtitle: Text(
+                                'Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'),
                             trailing: PopupMenuButton<String>(
                               onSelected: (v) async {
                                 if (v == 'editar') await _editarObjetivo(o);
-                                if (v == 'minutos') await _addMinutesToObjetivo(o);
+                                if (v == 'minutos')
+                                  await _addMinutesToObjetivo(o);
                                 if (v == 'eliminar') await _eliminarObjetivo(o);
                               },
                               itemBuilder: (_) => const [
-                                PopupMenuItem(value: 'editar', child: Text('Editar')),
-                                PopupMenuItem(value: 'minutos', child: Text('Agregar minutos')),
-                                PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                                PopupMenuItem(
+                                    value: 'editar', child: Text('Editar')),
+                                PopupMenuItem(
+                                    value: 'minutos',
+                                    child: Text('Agregar minutos')),
+                                PopupMenuItem(
+                                    value: 'eliminar', child: Text('Eliminar')),
                               ],
                             ),
                           )),
@@ -848,19 +868,25 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Builder(builder: (ctx) {
-                      final problemasDelSegmento = _problemas.where((p) => p.segmentoId == s.id).toList();
-                      if (problemasDelSegmento.isEmpty) return const SizedBox.shrink();
+                      final problemasDelSegmento = _problemas
+                          .where((p) => p.segmentoId == s.id)
+                          .toList();
+                      if (problemasDelSegmento.isEmpty)
+                        return const SizedBox.shrink();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                            child: Text('Problemas asociados', style: TextStyle(fontWeight: FontWeight.bold)),
+                            padding:
+                                EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                            child: Text('Problemas asociados',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           ...problemasDelSegmento.map((p) => ListTile(
                                 title: Text(p.descripcion),
-                                subtitle: Text('Intensidad: ${p.intensidad} · Estado: ${p.estado}'),
+                                subtitle: Text(
+                                    'Intensidad: ${p.intensidad} · Estado: ${p.estado}'),
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (v) async {
                                     if (v == 'desasignar') {
@@ -874,8 +900,12 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                                     }
                                   },
                                   itemBuilder: (_) => const [
-                                    PopupMenuItem(value: 'editar', child: Text('Editar en Dominio')),
-                                    PopupMenuItem(value: 'desasignar', child: Text('Desasignar')),
+                                    PopupMenuItem(
+                                        value: 'editar',
+                                        child: Text('Editar en Dominio')),
+                                    PopupMenuItem(
+                                        value: 'desasignar',
+                                        child: Text('Desasignar')),
                                   ],
                                 ),
                               ))
@@ -894,10 +924,15 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                           builder: (ctx) => AlertDialog(
                             backgroundColor: AppColors.surface,
                             title: const Text('Eliminar segmento'),
-                            content: const Text('¿Querés borrar este segmento?'),
+                            content:
+                                const Text('¿Querés borrar este segmento?'),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                              ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Cancelar')),
+                              ElevatedButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Eliminar')),
                             ],
                           ),
                         );

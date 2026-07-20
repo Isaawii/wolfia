@@ -33,10 +33,12 @@ class SessionGenerator {
     // 1. Puntaje por preparación (basado en sus segmentos + objetivos)
     final candidatos = <_Candidato>[];
     for (final prep in preparaciones) {
-      final segsDePrep = segmentos.where((s) => s.preparacionId == prep.id).toList();
+      final segsDePrep =
+          segmentos.where((s) => s.preparacionId == prep.id).toList();
       final objetivos = await _db.getObjetivos(prep.id);
-      final objetivosPendientes =
-          objetivos.where((o) => o.estado != 'cumplido' && o.estado != 'descartado').length;
+      final objetivosPendientes = objetivos
+          .where((o) => o.estado != 'cumplido' && o.estado != 'descartado')
+          .length;
 
       if (segsDePrep.isEmpty) {
         // Preparación sin segmentos: se trata como un único bloque.
@@ -106,22 +108,27 @@ class SessionGenerator {
 
   /// Planifica una sesión y devuelve la estructura (sesión + tareas) sin
   /// persistirla en la base de datos — útil para previsualizar el plan.
-  Future<Map<String, dynamic>> planificar({required int minutosDisponibles}) async {
+  Future<Map<String, dynamic>> planificar(
+      {required int minutosDisponibles}) async {
     final preparaciones = await _db.getPreparacionesActivas();
     final segmentos = await _db.getTodosSegmentosActivos();
 
     final candidatos = <_Candidato>[];
     if (preparaciones.isNotEmpty) {
       for (final prep in preparaciones) {
-        final segsDePrep = segmentos.where((s) => s.preparacionId == prep.id).toList();
+        final segsDePrep =
+            segmentos.where((s) => s.preparacionId == prep.id).toList();
         final objetivos = await _db.getObjetivos(prep.id);
-        final objetivosPendientes = objetivos.where((o) => o.estado != 'cumplido' && o.estado != 'descartado').length;
+        final objetivosPendientes = objetivos
+            .where((o) => o.estado != 'cumplido' && o.estado != 'descartado')
+            .length;
 
         if (segsDePrep.isEmpty) {
           final diasSinPracticar = prep.ultimaPractica == null
               ? 999
               : DateTime.now().difference(prep.ultimaPractica!).inDays;
-          final score = _scorePreparacion(diasSinPracticar, objetivosPendientes);
+          final score =
+              _scorePreparacion(diasSinPracticar, objetivosPendientes);
           candidatos.add(_Candidato(
             preparacion: prep,
             segmento: null,
@@ -179,7 +186,8 @@ class SessionGenerator {
     return {'sesion': sesion, 'tareas': tareas};
   }
 
-  double _scoreSegmento(Segmento seg, int diasSinPracticar, int objetivosPendientes) {
+  double _scoreSegmento(
+      Segmento seg, int diasSinPracticar, int objetivosPendientes) {
     double score = 10;
     score += seg.prioridad * 8; // 1-5 -> 8-40
     score += diasSinPracticar.clamp(0, 30) * 1.5;
@@ -204,7 +212,8 @@ class SessionGenerator {
     }
     if (seg.prioridad >= 4) partes.add('prioridad alta');
     if (objetivosPendientes > 0) {
-      partes.add('$objetivosPendientes objetivo${objetivosPendientes == 1 ? '' : 's'} pendiente${objetivosPendientes == 1 ? '' : 's'}');
+      partes.add(
+          '$objetivosPendientes objetivo${objetivosPendientes == 1 ? '' : 's'} pendiente${objetivosPendientes == 1 ? '' : 's'}');
     }
     return partes.isEmpty ? 'toca en la rotación' : partes.join(' · ');
   }
@@ -217,7 +226,8 @@ class SessionGenerator {
       partes.add('hace $dias día${dias == 1 ? '' : 's'} que no se practica');
     }
     if (objetivosPendientes > 0) {
-      partes.add('$objetivosPendientes objetivo${objetivosPendientes == 1 ? '' : 's'} pendiente${objetivosPendientes == 1 ? '' : 's'}');
+      partes.add(
+          '$objetivosPendientes objetivo${objetivosPendientes == 1 ? '' : 's'} pendiente${objetivosPendientes == 1 ? '' : 's'}');
     }
     return partes.join(' · ');
   }

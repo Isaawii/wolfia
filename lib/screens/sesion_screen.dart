@@ -317,7 +317,8 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
   }
 
   Future<void> _verPlanSesion() async {
-    final ses = await (await _db.database).query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
+    final ses = await (await _db.database)
+        .query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
     if (ses.isEmpty) return;
     final dur = (ses.first['duracion_planeada'] as int?) ?? 0;
     final gen = SessionGenerator();
@@ -334,7 +335,8 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
           controller: sc,
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            Text('Plan de la sesión ($dur min)', style: Theme.of(ctx).textTheme.titleLarge),
+            Text('Plan de la sesión ($dur min)',
+                style: Theme.of(ctx).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.md),
             if ((plan['tareas'] as List).isEmpty)
               const Text('No hay tareas planificadas para este tiempo.'),
@@ -350,7 +352,8 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
   }
 
   Future<void> _generarTareasParaSesion() async {
-    final sesRows = await (await _db.database).query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
+    final sesRows = await (await _db.database)
+        .query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
     if (sesRows.isEmpty) return;
     final dur = (sesRows.first['duracion_planeada'] as int?) ?? 0;
     final gen = SessionGenerator();
