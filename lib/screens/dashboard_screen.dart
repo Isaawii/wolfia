@@ -90,9 +90,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'No hay tareas planificadas para este tiempo.'),
                             ...((plan['tareas'] as List<Tarea>).map((t) =>
                                 ListTile(
-                                  title: Text(t.tituloPreparacion),
-                                  subtitle: Text(t.tituloSegmento ?? 'General'),
-                                  trailing: Text('${t.minutosPlaneados} min'),
+                                  title: Text(t.tituloObjetivo ?? t.tituloPreparacion),
+                                  subtitle: Text(
+                                    '${t.tituloPreparacion}${t.tituloSegmento != null ? ' · ${t.tituloSegmento}' : ''}',
+                                  ),
+                                  trailing: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('${t.minutosPlaneados} min'),
+                                      Text(
+                                        'hasta ${_formatearFin(t.minutosPlaneados)}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  ),
                                 ))),
                             const SizedBox(height: AppSpacing.md),
                             Row(children: [
@@ -256,6 +268,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  String _formatearFin(int minutos) {
+    final ahora = DateTime.now();
+    final fin = ahora.add(Duration(minutes: minutos));
+    final hh = fin.hour.toString().padLeft(2, '0');
+    final mm = fin.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
   }
 
   Widget _tarjetaPreparacion(Preparacion p) {

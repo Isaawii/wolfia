@@ -210,6 +210,9 @@ class Objetivo {
   int prioridad; // 1-5
   int puntos; // acumulados
   int puntosPorMinuto; // puntos asignados por minuto trabajado
+  String? estadoMental;
+  int tiempoMinimo;
+  int tiempoMaximo;
 
   Objetivo({
     required this.id,
@@ -220,6 +223,9 @@ class Objetivo {
     this.prioridad = 3,
     this.puntos = 0,
     this.puntosPorMinuto = 1,
+    this.estadoMental,
+    this.tiempoMinimo = 10,
+    this.tiempoMaximo = 25,
   });
 
   Map<String, dynamic> toMap() => {
@@ -231,6 +237,9 @@ class Objetivo {
         'prioridad': prioridad,
         'puntos': puntos,
         'puntos_por_minuto': puntosPorMinuto,
+        'estado_mental': estadoMental,
+        'tiempo_minimo': tiempoMinimo,
+        'tiempo_maximo': tiempoMaximo,
       };
 
   factory Objetivo.fromMap(Map<String, dynamic> m) => Objetivo(
@@ -242,6 +251,9 @@ class Objetivo {
         prioridad: m['prioridad'] as int? ?? 3,
         puntos: m['puntos'] as int? ?? 0,
         puntosPorMinuto: m['puntos_por_minuto'] as int? ?? 1,
+        estadoMental: m['estado_mental'] as String?,
+        tiempoMinimo: m['tiempo_minimo'] as int? ?? 10,
+        tiempoMaximo: m['tiempo_maximo'] as int? ?? 25,
       );
 }
 
@@ -286,8 +298,11 @@ class Tarea {
   final String sesionId;
   final String preparacionId;
   final String? segmentoId;
+  final String? objetivoId;
   final String tituloPreparacion;
   final String? tituloSegmento;
+  final String? tituloObjetivo;
+  final String? tipoObjetivo;
   int minutosPlaneados;
   int? minutosReales;
   bool completada;
@@ -299,8 +314,11 @@ class Tarea {
     required this.sesionId,
     required this.preparacionId,
     this.segmentoId,
+    this.objetivoId,
     required this.tituloPreparacion,
     this.tituloSegmento,
+    this.tituloObjetivo,
+    this.tipoObjetivo,
     required this.minutosPlaneados,
     this.minutosReales,
     this.completada = false,
@@ -313,8 +331,11 @@ class Tarea {
         'sesion_id': sesionId,
         'preparacion_id': preparacionId,
         'segmento_id': segmentoId,
+        'objetivo_id': objetivoId,
         'titulo_preparacion': tituloPreparacion,
         'titulo_segmento': tituloSegmento,
+        'titulo_objetivo': tituloObjetivo,
+        'tipo_objetivo': tipoObjetivo,
         'minutos_planeados': minutosPlaneados,
         'minutos_reales': minutosReales,
         'completada': completada ? 1 : 0,
@@ -327,8 +348,11 @@ class Tarea {
         sesionId: m['sesion_id'] as String,
         preparacionId: m['preparacion_id'] as String,
         segmentoId: m['segmento_id'] as String?,
+        objetivoId: m['objetivo_id'] as String?,
         tituloPreparacion: m['titulo_preparacion'] as String,
         tituloSegmento: m['titulo_segmento'] as String?,
+        tituloObjetivo: m['titulo_objetivo'] as String?,
+        tipoObjetivo: m['tipo_objetivo'] as String?,
         minutosPlaneados: m['minutos_planeados'] as int,
         minutosReales: m['minutos_reales'] as int?,
         completada: (m['completada'] as int? ?? 0) == 1,

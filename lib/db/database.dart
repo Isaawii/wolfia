@@ -21,7 +21,7 @@ class WolfiaDb {
     final path = join(dbPath, 'wolfia.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE elementos (
@@ -84,6 +84,9 @@ class WolfiaDb {
             prioridad INTEGER NOT NULL,
             puntos INTEGER NOT NULL,
             puntos_por_minuto INTEGER NOT NULL,
+            estado_mental TEXT,
+            tiempo_minimo INTEGER NOT NULL DEFAULT 10,
+            tiempo_maximo INTEGER NOT NULL DEFAULT 25,
             FOREIGN KEY (preparacion_id) REFERENCES preparaciones(id)
           );
         ''');
@@ -103,8 +106,11 @@ class WolfiaDb {
             sesion_id TEXT NOT NULL,
             preparacion_id TEXT NOT NULL,
             segmento_id TEXT,
+            objetivo_id TEXT,
             titulo_preparacion TEXT NOT NULL,
             titulo_segmento TEXT,
+            titulo_objetivo TEXT,
+            tipo_objetivo TEXT,
             minutos_planeados INTEGER NOT NULL,
             minutos_reales INTEGER,
             completada INTEGER NOT NULL,
@@ -164,6 +170,20 @@ class WolfiaDb {
               'ALTER TABLE preparaciones ADD COLUMN tempo_actual INTEGER');
           await db.execute(
               'ALTER TABLE preparaciones ADD COLUMN tempo_objetivo INTEGER');
+        }
+        if (oldVersion < 7) {
+          await db.execute(
+              'ALTER TABLE objetivos ADD COLUMN estado_mental TEXT');
+          await db.execute(
+              'ALTER TABLE objetivos ADD COLUMN tiempo_minimo INTEGER NOT NULL DEFAULT 10');
+          await db.execute(
+              'ALTER TABLE objetivos ADD COLUMN tiempo_maximo INTEGER NOT NULL DEFAULT 25');
+          await db.execute(
+              'ALTER TABLE tareas ADD COLUMN objetivo_id TEXT');
+          await db.execute(
+              'ALTER TABLE tareas ADD COLUMN titulo_objetivo TEXT');
+          await db.execute(
+              'ALTER TABLE tareas ADD COLUMN tipo_objetivo TEXT');
         }
       },
     );
@@ -333,6 +353,13 @@ class WolfiaDb {
     final rows = await (await database)
         .query('objetivos', where: 'segmento_id = ?', whereArgs: [segmentoId]);
     return rows.map(Objetivo.fromMap).toList();
+  }
+
+  Future<Objetivo?> getObjetivoPorId(String id) async {
+    final rows = await (await database)
+        .query('objetivos', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return Objetivo.fromMap(rows.first);
   }
 
   // ---------- Sesiones y tareas ----------

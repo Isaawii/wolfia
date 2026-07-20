@@ -122,9 +122,12 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
         ((tarea.minutosPlaneados * 60 - _segundosRestantes) / 60).ceil();
     await _db.updateTarea(tarea);
 
-    if (tarea.segmentoId != null) {
-      // Actualizamos "última práctica" del segmento asociado si aplica.
-      // (Simplificado: se podría extender guardando el segmento completo.)
+    if (tarea.objetivoId != null) {
+      final objetivo = await _db.getObjetivoPorId(tarea.objetivoId!);
+      if (objetivo != null) {
+        objetivo.estadoMental = _mapaEstadoMental(resultado);
+        await _db.updateObjetivo(objetivo);
+      }
     }
 
     if (_indiceActual < _tareas.length - 1) {
@@ -165,6 +168,21 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
         ],
       ),
     );
+  }
+
+  String _mapaEstadoMental(String resultado) {
+    switch (resultado) {
+      case 'excelente':
+        return 'alto';
+      case 'bien':
+        return 'neutral';
+      case 'regular':
+        return 'bajo';
+      case 'difícil':
+        return 'bajo';
+      default:
+        return 'neutral';
+    }
   }
 
   Future<void> _agregarNota() async {
@@ -341,14 +359,34 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
             if ((plan['tareas'] as List).isEmpty)
               const Text('No hay tareas planificadas para este tiempo.'),
             ...((plan['tareas'] as List<Tarea>).map((t) => ListTile(
-                  title: Text(t.tituloPreparacion),
-                  subtitle: Text(t.tituloSegmento ?? 'General'),
-                  trailing: Text('${t.minutosPlaneados} min'),
+                  title: Text(t.tituloObjetivo ?? t.tituloPreparacion),
+                  subtitle: Text(
+                    '${t.tituloPreparacion}${t.tituloSegmento != null ? ' · ${t.tituloSegmento}' : ''}',
+                  ),
+                  trailing: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('${t.minutosPlaneados} min'),
+                      Text(
+                        'hasta ${_formatearFin(t.minutosPlaneados)}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ))),
           ],
         ),
       ),
     );
+  }
+
+  String _formatearFin(int minutos) {
+    final ahora = DateTime.now();
+    final fin = ahora.add(Duration(minutes: minutos));
+    final hh = fin.hour.toString().padLeft(2, '0');
+    final mm = fin.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
   }
 
   Future<void> _generarTareasParaSesion() async {

@@ -209,6 +209,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     final descCtrl = TextEditingController(text: o.descripcion);
     final puntosCtrl = TextEditingController(text: '${o.puntos}');
     final rateCtrl = TextEditingController(text: '${o.puntosPorMinuto}');
+    final minCtrl = TextEditingController(text: '${o.tiempoMinimo}');
+    final maxCtrl = TextEditingController(text: '${o.tiempoMaximo}');
 
     final ok = await showDialog<bool>(
       context: context,
@@ -234,6 +236,14 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   decoration:
                       const InputDecoration(labelText: 'Puntos por minuto'),
                   keyboardType: TextInputType.number),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                  controller: minCtrl,
+                  decoration: const InputDecoration(labelText: 'Tiempo mínimo (min)')),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                  controller: maxCtrl,
+                  decoration: const InputDecoration(labelText: 'Tiempo máximo (min)')),
             ],
           ),
         ),
@@ -253,6 +263,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
       o.puntos = int.tryParse(puntosCtrl.text.trim()) ?? o.puntos;
       o.puntosPorMinuto =
           int.tryParse(rateCtrl.text.trim()) ?? o.puntosPorMinuto;
+      o.tiempoMinimo = int.tryParse(minCtrl.text.trim()) ?? o.tiempoMinimo;
+      o.tiempoMaximo = int.tryParse(maxCtrl.text.trim()) ?? o.tiempoMaximo;
       await _db.updateObjetivo(o);
       _cargar();
     }
@@ -562,6 +574,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   Future<void> _agregarObjetivo() async {
     final descCtrl = TextEditingController();
     final puntosPorMinCtrl = TextEditingController(text: '1');
+    final minCtrl = TextEditingController(text: '10');
+    final maxCtrl = TextEditingController(text: '25');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -583,6 +597,18 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                     labelText: 'Puntos por minuto (ej: 1)'),
                 keyboardType: TextInputType.number,
               ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: minCtrl,
+                decoration: const InputDecoration(labelText: 'Tiempo mínimo (min)'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: maxCtrl,
+                decoration: const InputDecoration(labelText: 'Tiempo máximo (min)'),
+                keyboardType: TextInputType.number,
+              ),
             ],
           ),
         ),
@@ -599,12 +625,16 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
 
     if (ok == true && descCtrl.text.trim().isNotEmpty) {
       final rate = int.tryParse(puntosPorMinCtrl.text.trim()) ?? 1;
+      final min = int.tryParse(minCtrl.text.trim()) ?? 10;
+      final max = int.tryParse(maxCtrl.text.trim()) ?? 25;
       final obj = Objetivo(
         id: _uuid.v4(),
         preparacionId: widget.preparacionId,
         descripcion: descCtrl.text.trim(),
         puntos: 0,
         puntosPorMinuto: rate,
+        tiempoMinimo: min,
+        tiempoMaximo: max,
       );
       await _db.insertObjetivo(obj);
       _cargar();
@@ -614,6 +644,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   Future<void> _agregarObjetivoEnSegmento(Segmento s) async {
     final descCtrl = TextEditingController();
     final puntosPorMinCtrl = TextEditingController(text: '1');
+    final minCtrl = TextEditingController(text: '10');
+    final maxCtrl = TextEditingController(text: '25');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -635,6 +667,18 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                     labelText: 'Puntos por minuto (ej: 1)'),
                 keyboardType: TextInputType.number,
               ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: minCtrl,
+                decoration: const InputDecoration(labelText: 'Tiempo mínimo (min)'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: maxCtrl,
+                decoration: const InputDecoration(labelText: 'Tiempo máximo (min)'),
+                keyboardType: TextInputType.number,
+              ),
             ],
           ),
         ),
@@ -651,6 +695,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
 
     if (ok == true && descCtrl.text.trim().isNotEmpty) {
       final rate = int.tryParse(puntosPorMinCtrl.text.trim()) ?? 1;
+      final min = int.tryParse(minCtrl.text.trim()) ?? 10;
+      final max = int.tryParse(maxCtrl.text.trim()) ?? 25;
       final obj = Objetivo(
         id: _uuid.v4(),
         preparacionId: widget.preparacionId,
@@ -658,6 +704,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
         descripcion: descCtrl.text.trim(),
         puntos: 0,
         puntosPorMinuto: rate,
+        tiempoMinimo: min,
+        tiempoMaximo: max,
       );
       await _db.insertObjetivo(obj);
       _cargar();
