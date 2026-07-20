@@ -21,7 +21,7 @@ class WolfiaDb {
     final path = join(dbPath, 'wolfia.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE elementos (
@@ -29,6 +29,7 @@ class WolfiaDb {
             nombre TEXT NOT NULL,
             tipo TEXT NOT NULL,
             compositor TEXT,
+            compases INTEGER,
             categoria TEXT NOT NULL,
             estado TEXT NOT NULL,
             notas TEXT NOT NULL,
@@ -41,6 +42,7 @@ class WolfiaDb {
             elemento_id TEXT NOT NULL,
             nombre TEXT NOT NULL,
             objetivo_principal TEXT,
+            categoria TEXT,
             estado TEXT NOT NULL,
             activa INTEGER NOT NULL,
             fecha_objetivo TEXT,
@@ -59,6 +61,8 @@ class WolfiaDb {
             estado TEXT NOT NULL,
             tempo_actual INTEGER,
             tempo_objetivo INTEGER,
+            compas_inicio INTEGER,
+            compas_fin INTEGER,
             ultima_practica TEXT,
             notas TEXT NOT NULL,
             FOREIGN KEY (preparacion_id) REFERENCES preparaciones(id)
@@ -119,6 +123,12 @@ class WolfiaDb {
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _crearTablasFaseA(db);
+        }
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE elementos ADD COLUMN compases INTEGER');
+          await db.execute('ALTER TABLE preparaciones ADD COLUMN categoria TEXT');
+          await db.execute('ALTER TABLE segmentos ADD COLUMN compas_inicio INTEGER');
+          await db.execute('ALTER TABLE segmentos ADD COLUMN compas_fin INTEGER');
         }
       },
     );
@@ -226,6 +236,19 @@ class WolfiaDb {
     return rows.map(Elemento.fromMap).toList();
   }
 
+  Future<void> updateElemento(Elemento e) async =>
+      (await database).update('elementos', e.toMap(), where: 'id = ?', whereArgs: [e.id]);
+
+  Future<void> deleteElemento(String id) async {
+    final db = await database;
+    final preps = await db.query('preparaciones', where: 'elemento_id = ?', whereArgs: [id]);
+    for (final prep in preps) {
+      final prepId = prep['id'] as String;
+      await deletePreparacion(prepId);
+    }
+    await db.delete('elementos', where: 'id = ?', whereArgs: [id]);
+  }
+
   // ---------- Preparaciones ----------
   Future<void> insertPreparacion(Preparacion p) async =>
       (await database).insert('preparaciones', p.toMap());
@@ -244,12 +267,24 @@ class WolfiaDb {
     return rows.map(Preparacion.fromMap).toList();
   }
 
+  Future<void> deletePreparacion(String id) async {
+    final db = await database;
+    await db.delete('segmentos', where: 'preparacion_id = ?', whereArgs: [id]);
+    await db.delete('objetivos', where: 'preparacion_id = ?', whereArgs: [id]);
+    await db.delete('notas', where: 'preparacion_id = ?', whereArgs: [id]);
+    await db.delete('tareas', where: 'preparacion_id = ?', whereArgs: [id]);
+    await db.delete('preparaciones', where: 'id = ?', whereArgs: [id]);
+  }
+
   // ---------- Segmentos ----------
   Future<void> insertSegmento(Segmento s) async =>
       (await database).insert('segmentos', s.toMap());
 
   Future<void> updateSegmento(Segmento s) async => (await database)
       .update('segmentos', s.toMap(), where: 'id = ?', whereArgs: [s.id]);
+
+  Future<void> deleteSegmento(String id) async =>
+      (await database).delete('segmentos', where: 'id = ?', whereArgs: [id]);
 
   Future<List<Segmento>> getSegmentos(String preparacionId) async {
     final rows = await (await database).query('segmentos',

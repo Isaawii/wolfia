@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Wolfia
 
 Asistente personal de estudio de piano. Versión simplificada del documento
@@ -98,3 +99,7 @@ Todo lo que NO se incluyó a propósito (event sourcing, CQRS, múltiples
 profesores/alumnos, IA, sincronización entre dispositivos) es exactamente
 la parte del documento pensada para una app comercial escalable, no para
 uso personal.
+=======
+# wolfia
+Asistente personal de estudio de piano.  Pensada para uso personal, con recursos 100% gratuitos y sin backend.
+>>>>>>> 9e5cb259460e2b49d8a942a8fc56fde5e7c296f4

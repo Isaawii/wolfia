@@ -9,6 +9,7 @@ class Elemento {
   String nombre;
   String tipo; // 'obra' | 'ejercicio'
   String? compositor;
+  int? compases;
   String categoria;
   String estado; // pendiente/leyendo/estudiando/consolidando/lista/archivada
   String notas;
@@ -19,6 +20,7 @@ class Elemento {
     required this.nombre,
     required this.tipo,
     this.compositor,
+    this.compases,
     this.categoria = 'General',
     this.estado = 'pendiente',
     this.notas = '',
@@ -31,6 +33,7 @@ class Elemento {
         'tipo': tipo,
         'compositor': compositor,
         'categoria': categoria,
+        'compases': compases,
         'estado': estado,
         'notas': notas,
         'creado_en': creadoEn.toIso8601String(),
@@ -41,6 +44,7 @@ class Elemento {
         nombre: m['nombre'] as String,
         tipo: m['tipo'] as String,
         compositor: m['compositor'] as String?,
+        compases: m['compases'] as int?,
         categoria: m['categoria'] as String? ?? 'General',
         estado: m['estado'] as String? ?? 'pendiente',
         notas: m['notas'] as String? ?? '',
@@ -56,6 +60,7 @@ class Preparacion {
   String nombre;
   String? objetivoPrincipal;
   String estado; // pendiente/leyendo/estudiando/consolidando/lista/finalizada
+  String? categoria;
   bool activa;
   DateTime? fechaObjetivo;
   int puntos;
@@ -67,6 +72,7 @@ class Preparacion {
     required this.elementoId,
     required this.nombre,
     this.objetivoPrincipal,
+    this.categoria,
     this.estado = 'pendiente',
     this.activa = true,
     this.fechaObjetivo,
@@ -81,6 +87,7 @@ class Preparacion {
         'nombre': nombre,
         'objetivo_principal': objetivoPrincipal,
         'estado': estado,
+        'categoria': categoria,
         'activa': activa ? 1 : 0,
         'fecha_objetivo': fechaObjetivo?.toIso8601String(),
         'puntos': puntos,
@@ -93,6 +100,7 @@ class Preparacion {
         elementoId: m['elemento_id'] as String,
         nombre: m['nombre'] as String,
         objetivoPrincipal: m['objetivo_principal'] as String?,
+        categoria: m['categoria'] as String?,
         estado: m['estado'] as String? ?? 'pendiente',
         activa: (m['activa'] as int? ?? 1) == 1,
         fechaObjetivo: m['fecha_objetivo'] != null
@@ -114,6 +122,8 @@ class Segmento {
   String estado; // pendiente/activo/consolidando/resuelto
   int? tempoActual;
   int? tempoObjetivo;
+  int? compasInicio;
+  int? compasFin;
   DateTime? ultimaPractica;
   String notas;
 
@@ -125,6 +135,8 @@ class Segmento {
     this.estado = 'pendiente',
     this.tempoActual,
     this.tempoObjetivo,
+    this.compasInicio,
+    this.compasFin,
     this.ultimaPractica,
     this.notas = '',
   });
@@ -138,6 +150,8 @@ class Segmento {
         'tempo_actual': tempoActual,
         'tempo_objetivo': tempoObjetivo,
         'ultima_practica': ultimaPractica?.toIso8601String(),
+        'compas_inicio': compasInicio,
+        'compas_fin': compasFin,
         'notas': notas,
       };
 
@@ -149,6 +163,8 @@ class Segmento {
         estado: m['estado'] as String? ?? 'pendiente',
         tempoActual: m['tempo_actual'] as int?,
         tempoObjetivo: m['tempo_objetivo'] as int?,
+        compasInicio: m['compas_inicio'] as int?,
+        compasFin: m['compas_fin'] as int?,
         ultimaPractica: m['ultima_practica'] != null
             ? DateTime.parse(m['ultima_practica'] as String)
             : null,
