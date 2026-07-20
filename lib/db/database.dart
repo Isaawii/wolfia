@@ -142,14 +142,20 @@ class WolfiaDb {
               .execute('ALTER TABLE segmentos ADD COLUMN compas_fin INTEGER');
         }
         if (oldVersion < 4) {
-          await db.execute('ALTER TABLE preparaciones ADD COLUMN prioridad INTEGER DEFAULT 3');
-          await db.execute('ALTER TABLE preparaciones ADD COLUMN tiempo_invertido INTEGER DEFAULT 0');
-          await db.execute('ALTER TABLE preparaciones ADD COLUMN sesiones_count INTEGER DEFAULT 0');
-          await db.execute('ALTER TABLE preparaciones ADD COLUMN profesor_id TEXT');
+          await db.execute(
+              'ALTER TABLE preparaciones ADD COLUMN prioridad INTEGER DEFAULT 3');
+          await db.execute(
+              'ALTER TABLE preparaciones ADD COLUMN tiempo_invertido INTEGER DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE preparaciones ADD COLUMN sesiones_count INTEGER DEFAULT 0');
+          await db
+              .execute('ALTER TABLE preparaciones ADD COLUMN profesor_id TEXT');
         }
         if (oldVersion < 5) {
-          await db.execute('ALTER TABLE objetivos ADD COLUMN puntos INTEGER DEFAULT 0');
-          await db.execute('ALTER TABLE objetivos ADD COLUMN puntos_por_minuto INTEGER DEFAULT 1');
+          await db.execute(
+              'ALTER TABLE objetivos ADD COLUMN puntos INTEGER DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE objetivos ADD COLUMN puntos_por_minuto INTEGER DEFAULT 1');
         }
       },
     );
@@ -384,7 +390,9 @@ class WolfiaDb {
 
   Future<List<Nota>> getNotasPorPreparacion(String preparacionId) async {
     final rows = await (await database).query('notas',
-        where: 'preparacion_id = ?', whereArgs: [preparacionId], orderBy: 'fecha DESC');
+        where: 'preparacion_id = ?',
+        whereArgs: [preparacionId],
+        orderBy: 'fecha DESC');
     return rows.map(Nota.fromMap).toList();
   }
 

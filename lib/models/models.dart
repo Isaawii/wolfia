@@ -232,8 +232,8 @@ class Objetivo {
         descripcion: m['descripcion'] as String,
         estado: m['estado'] as String? ?? 'pendiente',
         prioridad: m['prioridad'] as int? ?? 3,
-          puntos: m['puntos'] as int? ?? 0,
-          puntosPorMinuto: m['puntos_por_minuto'] as int? ?? 1,
+        puntos: m['puntos'] as int? ?? 0,
+        puntosPorMinuto: m['puntos_por_minuto'] as int? ?? 1,
       );
 }
 
