@@ -22,6 +22,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   List<Categoria> _categorias = [];
   List<Profesor> _profesores = [];
   List<Nota> _notas = [];
+  List<Problema> _problemas = [];
   bool _cargando = true;
 
   @override
@@ -40,6 +41,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     final categorias = await _db.getCategorias();
     final profesores = await _db.getProfesores();
     final notas = await _db.getNotasPorPreparacion(widget.preparacionId);
+    final problemas = await _db.getProblemas();
     setState(() {
       _prep = prep;
       _elemento = elemento;
@@ -48,6 +50,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
       _categorias = categorias;
       _profesores = profesores;
       _notas = notas;
+      _problemas = problemas;
       _cargando = false;
     });
   }
@@ -66,6 +69,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     DateTime? fechaObj = _prep?.fechaObjetivo;
     int prioridad = _prep?.prioridad ?? 3;
     String? profesorId = _prep?.profesorId;
+    final tempoActualCtrl = TextEditingController(text: _prep?.tempoActual?.toString() ?? '');
+    final tempoObjetivoCtrl = TextEditingController(text: _prep?.tempoObjetivo?.toString() ?? '');
 
     final ok = await showDialog<bool>(
       context: context,
@@ -153,6 +158,18 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   ],
                   onChanged: (v) => setStateDialog(() => profesorId = v),
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: tempoActualCtrl,
+                  decoration: const InputDecoration(labelText: 'Tempo actual (bpm) (opcional)'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: tempoObjetivoCtrl,
+                  decoration: const InputDecoration(labelText: 'Tempo objetivo (bpm) (opcional)'),
+                  keyboardType: TextInputType.number,
+                ),
               ],
             ),
           ),
@@ -177,6 +194,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
       _prep!.fechaObjetivo = fechaObj;
       _prep!.prioridad = prioridad;
       _prep!.profesorId = profesorId;
+      _prep!.tempoActual = int.tryParse(tempoActualCtrl.text.trim());
+      _prep!.tempoObjetivo = int.tryParse(tempoObjetivoCtrl.text.trim());
       await _db.updatePreparacion(_prep!);
       _cargar();
     }
@@ -487,7 +506,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
               Positioned.fill(
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 10),
-                  color: AppColors.bg.withOpacity(0.1),
+                  color: AppColors.bg.withValues(alpha: 0.1),
                 ),
               ),
               ...visibles.map((s) {
@@ -502,7 +521,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   width: width * MediaQuery.of(context).size.width * 0.92,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: _colorForPrioridad(s.prioridad).withOpacity(0.85),
+                          color: _colorForPrioridad(s.prioridad).withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -587,6 +606,108 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     }
   }
 
+  Future<void> _agregarObjetivoEnSegmento(Segmento s) async {
+    final descCtrl = TextEditingController();
+    final puntosPorMinCtrl = TextEditingController(text: '1');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Nuevo objetivo (segmento)'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(labelText: 'Descripción'),
+                autofocus: true,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: puntosPorMinCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Puntos por minuto (ej: 1)'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Crear')),
+        ],
+      ),
+    );
+
+    if (ok == true && descCtrl.text.trim().isNotEmpty) {
+      final rate = int.tryParse(puntosPorMinCtrl.text.trim()) ?? 1;
+      final obj = Objetivo(
+        id: _uuid.v4(),
+        preparacionId: widget.preparacionId,
+        segmentoId: s.id,
+        descripcion: descCtrl.text.trim(),
+        puntos: 0,
+        puntosPorMinuto: rate,
+      );
+      await _db.insertObjetivo(obj);
+      _cargar();
+    }
+  }
+
+  Future<void> _asignarProblemaASegmento(Segmento s) async {
+    final disponibles = _problemas.where((p) => p.segmentoId != s.id).toList();
+    String? seleccionadoId;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Asignar problema al segmento'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (disponibles.isEmpty)
+                Column(
+                  children: const [
+                    Text('No hay problemas definidos. '),
+                    SizedBox(height: AppSpacing.sm),
+                    Text('Crea problemas desde la pestaña Dominio.')
+                  ],
+                )
+              else
+                DropdownButtonFormField<String>(
+                  items: disponibles
+                      .map((p) => DropdownMenuItem(
+                          value: p.id, child: Text(p.descripcion)))
+                      .toList(),
+                  onChanged: (v) => seleccionadoId = v,
+                  decoration: const InputDecoration(labelText: 'Problema'),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Asignar')),
+        ],
+      ),
+    );
+
+    if (ok == true && seleccionadoId != null) {
+      final p = _problemas.firstWhere((x) => x.id == seleccionadoId);
+      p.segmentoId = s.id;
+      p.preparacionId = widget.preparacionId;
+      await _db.updateProblema(p);
+      _cargar();
+    }
+  }
+
   Future<void> _toggleObjetivo(Objetivo o) async {
     o.estado = o.estado == 'cumplido' ? 'pendiente' : 'cumplido';
     await _db.updateObjetivo(o);
@@ -650,6 +771,10 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
             const SizedBox(height: AppSpacing.sm),
             Text('Tiempo invertido: ${prep.tiempoInvertido} min'),
             const SizedBox(height: AppSpacing.sm),
+            Text('Tempo actual: ${prep.tempoActual ?? '—'}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Tempo objetivo: ${prep.tempoObjetivo ?? '—'}'),
+            const SizedBox(height: AppSpacing.sm),
             Text('Sesiones involucradas: ${prep.sesionesCount}'),
             const SizedBox(height: AppSpacing.sm),
             Text('Categoría: ${prep.categoria ?? '—'}'),
@@ -669,18 +794,95 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
               Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                   child: _buildDiagrama()),
-            ..._segmentos.map((s) => Card(
-                    child: ListTile(
+            ..._segmentos.map((s) {
+              final objetivosDelSegmento = _objetivos.where((o) => o.segmentoId == s.id).toList();
+              return Card(
+                child: ExpansionTile(
                   title: Text(s.nombre),
                   subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}'),
+                      if (s.compasInicio != null || s.compasFin != null)
+                        Text('Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
+                      if (s.tempoActual != null || s.tempoObjetivo != null)
+                        Text('Tempo: actual ${s.tempoActual ?? '—'} · objetivo ${s.tempoObjetivo ?? '—'}'),
+                    ],
+                  ),
+                  children: [
+                    if (objetivosDelSegmento.isEmpty)
+                      const ListTile(title: Text('Sin objetivos en este segmento'))
+                    else
+                      ...objetivosDelSegmento.map((o) => ListTile(
+                            leading: Checkbox(
+                                value: o.estado == 'cumplido',
+                                onChanged: (_) => _toggleObjetivo(o)),
+                            title: Text(o.descripcion),
+                            subtitle: Text('Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (v) async {
+                                if (v == 'editar') await _editarObjetivo(o);
+                                if (v == 'minutos') await _addMinutesToObjetivo(o);
+                                if (v == 'eliminar') await _eliminarObjetivo(o);
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(value: 'editar', child: Text('Editar')),
+                                PopupMenuItem(value: 'minutos', child: Text('Agregar minutos')),
+                                PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                              ],
+                            ),
+                          )),
+                    const Divider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text(
-                            'Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}'),
-                        if (s.compasInicio != null || s.compasFin != null)
-                          Text(
-                              'Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}')
-                      ]),
+                        TextButton(
+                            onPressed: () => _agregarObjetivoEnSegmento(s),
+                            child: const Text('Agregar objetivo')),
+                        const SizedBox(width: AppSpacing.sm),
+                        TextButton(
+                            onPressed: () => _asignarProblemaASegmento(s),
+                            child: const Text('Asignar problema')),
+                        const SizedBox(width: AppSpacing.sm),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Builder(builder: (ctx) {
+                      final problemasDelSegmento = _problemas.where((p) => p.segmentoId == s.id).toList();
+                      if (problemasDelSegmento.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                            child: Text('Problemas asociados', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          ...problemasDelSegmento.map((p) => ListTile(
+                                title: Text(p.descripcion),
+                                subtitle: Text('Intensidad: ${p.intensidad} · Estado: ${p.estado}'),
+                                trailing: PopupMenuButton<String>(
+                                  onSelected: (v) async {
+                                    if (v == 'desasignar') {
+                                      p.segmentoId = null;
+                                      await _db.updateProblema(p);
+                                      _cargar();
+                                    } else if (v == 'editar') {
+                                      // open dominio edit flow
+                                      // For simplicity reuse Dominio screen flow: open dominio to edit
+                                      Navigator.pushNamed(context, '/dominio');
+                                    }
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(value: 'editar', child: Text('Editar en Dominio')),
+                                    PopupMenuItem(value: 'desasignar', child: Text('Desasignar')),
+                                  ],
+                                ),
+                              ))
+                        ],
+                      );
+                    })
+                  ],
                   trailing: PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
                     onSelected: (value) async {
@@ -692,15 +894,10 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                           builder: (ctx) => AlertDialog(
                             backgroundColor: AppColors.surface,
                             title: const Text('Eliminar segmento'),
-                            content:
-                                const Text('¿Querés borrar este segmento?'),
+                            content: const Text('¿Querés borrar este segmento?'),
                             actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Cancelar')),
-                              ElevatedButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Eliminar')),
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                              ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')),
                             ],
                           ),
                         );
@@ -715,7 +912,9 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                       PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
                     ],
                   ),
-                ))),
+                ),
+              );
+            }),
           ]),
           // Objetivos tab
           ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [

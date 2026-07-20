@@ -104,6 +104,81 @@ class SessionGenerator {
     return sesion;
   }
 
+  /// Planifica una sesión y devuelve la estructura (sesión + tareas) sin
+  /// persistirla en la base de datos — útil para previsualizar el plan.
+  Future<Map<String, dynamic>> planificar({required int minutosDisponibles}) async {
+    final preparaciones = await _db.getPreparacionesActivas();
+    final segmentos = await _db.getTodosSegmentosActivos();
+
+    final candidatos = <_Candidato>[];
+    if (preparaciones.isNotEmpty) {
+      for (final prep in preparaciones) {
+        final segsDePrep = segmentos.where((s) => s.preparacionId == prep.id).toList();
+        final objetivos = await _db.getObjetivos(prep.id);
+        final objetivosPendientes = objetivos.where((o) => o.estado != 'cumplido' && o.estado != 'descartado').length;
+
+        if (segsDePrep.isEmpty) {
+          final diasSinPracticar = prep.ultimaPractica == null
+              ? 999
+              : DateTime.now().difference(prep.ultimaPractica!).inDays;
+          final score = _scorePreparacion(diasSinPracticar, objetivosPendientes);
+          candidatos.add(_Candidato(
+            preparacion: prep,
+            segmento: null,
+            score: score,
+            motivo: _motivoPreparacion(diasSinPracticar, objetivosPendientes),
+          ));
+        } else {
+          for (final seg in segsDePrep) {
+            final dias = seg.diasSinPracticar();
+            final score = _scoreSegmento(seg, dias, objetivosPendientes);
+            candidatos.add(_Candidato(
+              preparacion: prep,
+              segmento: seg,
+              score: score,
+              motivo: _motivoSegmento(seg, dias, objetivosPendientes),
+            ));
+          }
+        }
+      }
+    }
+
+    candidatos.sort((a, b) => b.score.compareTo(a.score));
+
+    const minPorTarea = 8;
+    const maxPorTarea = 25;
+    int restante = minutosDisponibles;
+    final tareas = <Tarea>[];
+
+    final sesion = Sesion(
+      id: _uuid.v4(),
+      fecha: DateTime.now(),
+      duracionPlaneada: minutosDisponibles,
+      estado: 'generada',
+    );
+
+    for (final c in candidatos) {
+      if (restante < minPorTarea) break;
+      final minutos = restante >= maxPorTarea ? maxPorTarea : restante;
+      if (minutos < minPorTarea) break;
+
+      final tarea = Tarea(
+        id: _uuid.v4(),
+        sesionId: sesion.id,
+        preparacionId: c.preparacion.id,
+        segmentoId: c.segmento?.id,
+        tituloPreparacion: c.preparacion.nombre,
+        tituloSegmento: c.segmento?.nombre,
+        minutosPlaneados: minutos,
+        motivo: c.motivo,
+      );
+      tareas.add(tarea);
+      restante -= minutos;
+    }
+
+    return {'sesion': sesion, 'tareas': tareas};
+  }
+
   double _scoreSegmento(Segmento seg, int diasSinPracticar, int objetivosPendientes) {
     double score = 10;
     score += seg.prioridad * 8; // 1-5 -> 8-40

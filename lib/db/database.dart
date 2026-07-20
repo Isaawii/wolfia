@@ -21,7 +21,7 @@ class WolfiaDb {
     final path = join(dbPath, 'wolfia.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE elementos (
@@ -52,6 +52,8 @@ class WolfiaDb {
             sesiones_count INTEGER NOT NULL,
             profesor_id TEXT,
             ultima_practica TEXT,
+            tempo_actual INTEGER,
+            tempo_objetivo INTEGER,
             creado_en TEXT NOT NULL,
             FOREIGN KEY (elemento_id) REFERENCES elementos(id)
           );
@@ -157,6 +159,12 @@ class WolfiaDb {
           await db.execute(
               'ALTER TABLE objetivos ADD COLUMN puntos_por_minuto INTEGER DEFAULT 1');
         }
+        if (oldVersion < 6) {
+          await db.execute(
+              'ALTER TABLE preparaciones ADD COLUMN tempo_actual INTEGER');
+          await db.execute(
+              'ALTER TABLE preparaciones ADD COLUMN tempo_objetivo INTEGER');
+        }
       },
     );
   }
@@ -183,33 +191,7 @@ class WolfiaDb {
         FOREIGN KEY (segmento_id) REFERENCES segmentos(id)
       );
     ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS patrones (
-        id TEXT PRIMARY KEY,
-        nombre TEXT NOT NULL,
-        descripcion TEXT NOT NULL,
-        familia TEXT NOT NULL,
-        creado_en TEXT NOT NULL
-      );
-    ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS patron_elementos (
-        patron_id TEXT NOT NULL,
-        elemento_id TEXT NOT NULL,
-        PRIMARY KEY (patron_id, elemento_id),
-        FOREIGN KEY (patron_id) REFERENCES patrones(id),
-        FOREIGN KEY (elemento_id) REFERENCES elementos(id)
-      );
-    ''');
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS patron_problemas (
-        patron_id TEXT NOT NULL,
-        problema_id TEXT NOT NULL,
-        PRIMARY KEY (patron_id, problema_id),
-        FOREIGN KEY (patron_id) REFERENCES patrones(id),
-        FOREIGN KEY (problema_id) REFERENCES problemas(id)
-      );
-    ''');
+    // Patrones removed: not needed in simplified app.
     await db.execute('''
       CREATE TABLE IF NOT EXISTS capacidades (
         id TEXT PRIMARY KEY,
@@ -347,6 +329,12 @@ class WolfiaDb {
     return rows.map(Objetivo.fromMap).toList();
   }
 
+  Future<List<Objetivo>> getObjetivosPorSegmento(String segmentoId) async {
+    final rows = await (await database)
+        .query('objetivos', where: 'segmento_id = ?', whereArgs: [segmentoId]);
+    return rows.map(Objetivo.fromMap).toList();
+  }
+
   // ---------- Sesiones y tareas ----------
   Future<void> insertSesion(Sesion s) async =>
       (await database).insert('sesiones', s.toMap());
@@ -416,83 +404,7 @@ class WolfiaDb {
     return rows.map(Problema.fromMap).toList();
   }
 
-  // ---------- Patrones ----------
-  Future<void> insertPatron(Patron p) async =>
-      (await database).insert('patrones', p.toMap());
-
-  Future<void> updatePatron(Patron p) async => (await database)
-      .update('patrones', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
-
-  Future<void> deletePatron(String id) async {
-    final db = await database;
-    await db
-        .delete('patron_elementos', where: 'patron_id = ?', whereArgs: [id]);
-    await db
-        .delete('patron_problemas', where: 'patron_id = ?', whereArgs: [id]);
-    await db.delete('patrones', where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<List<Patron>> getPatrones() async {
-    final rows = await (await database).query('patrones', orderBy: 'nombre');
-    return rows.map(Patron.fromMap).toList();
-  }
-
-  Future<void> vincularPatronElemento(
-          String patronId, String elementoId) async =>
-      (await database).insert('patron_elementos',
-          {'patron_id': patronId, 'elemento_id': elementoId},
-          conflictAlgorithm: ConflictAlgorithm.ignore);
-
-  Future<void> desvincularPatronElemento(
-          String patronId, String elementoId) async =>
-      (await database).delete('patron_elementos',
-          where: 'patron_id = ? AND elemento_id = ?',
-          whereArgs: [patronId, elementoId]);
-
-  Future<List<Elemento>> getElementosDePatron(String patronId) async {
-    final rows = await (await database).rawQuery('''
-      SELECT e.* FROM elementos e
-      INNER JOIN patron_elementos pe ON pe.elemento_id = e.id
-      WHERE pe.patron_id = ?
-    ''', [patronId]);
-    return rows.map(Elemento.fromMap).toList();
-  }
-
-  Future<void> vincularPatronProblema(
-          String patronId, String problemaId) async =>
-      (await database).insert('patron_problemas',
-          {'patron_id': patronId, 'problema_id': problemaId},
-          conflictAlgorithm: ConflictAlgorithm.ignore);
-
-  Future<void> desvincularPatronProblema(
-          String patronId, String problemaId) async =>
-      (await database).delete('patron_problemas',
-          where: 'patron_id = ? AND problema_id = ?',
-          whereArgs: [patronId, problemaId]);
-
-  Future<List<Problema>> getProblemasDePatron(String patronId) async {
-    final rows = await (await database).rawQuery('''
-      SELECT p.* FROM problemas p
-      INNER JOIN patron_problemas pp ON pp.problema_id = p.id
-      WHERE pp.patron_id = ?
-    ''', [patronId]);
-    return rows.map(Problema.fromMap).toList();
-  }
-
-  /// Detecta patrones cuyos problemas vinculados aparecen en más de un
-  /// elemento distinto (vía preparación) — es decir, el mismo problema
-  /// "se repite entre varias obras".
-  Future<Map<String, int>> contarElementosDistintosPorPatron() async {
-    final db = await database;
-    final rows = await db.rawQuery('''
-      SELECT pp.patron_id AS patron_id, COUNT(DISTINCT prep.elemento_id) AS n
-      FROM patron_problemas pp
-      INNER JOIN problemas pr ON pr.id = pp.problema_id
-      INNER JOIN preparaciones prep ON prep.id = pr.preparacion_id
-      GROUP BY pp.patron_id
-    ''');
-    return {for (final r in rows) r['patron_id'] as String: r['n'] as int};
-  }
+  // Patrones removed: related helpers deleted.
 
   // ---------- Capacidades ----------
   Future<void> insertCapacidad(Capacidad c) async =>

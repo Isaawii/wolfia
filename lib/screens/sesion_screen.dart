@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../db/database.dart';
 import '../models/models.dart';
 import '../theme.dart';
+import '../services/session_generator.dart';
 
 /// Pestaña "Sesión": si hay una sesión en curso la muestra, si no invita
 /// a generar una desde el Dashboard.
@@ -206,7 +207,24 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
   Widget build(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
     if (_tareas.isEmpty) {
-      return const Center(child: Text('Esta sesión no tiene tareas.'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Esta sesión no tiene tareas.'),
+              const SizedBox(height: AppSpacing.md),
+              ElevatedButton(
+                  onPressed: _verPlanSesion, child: const Text('Ver plan')),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                  onPressed: _generarTareasParaSesion,
+                  child: const Text('Generar tareas para esta sesión')),
+            ],
+          ),
+        ),
+      );
     }
 
     final tarea = _tareas[_indiceActual];
@@ -296,6 +314,62 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
       ),
       body: SingleChildScrollView(child: contenido),
     );
+  }
+
+  Future<void> _verPlanSesion() async {
+    final ses = await (await _db.database).query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
+    if (ses.isEmpty) return;
+    final dur = (ses.first['duracion_planeada'] as int?) ?? 0;
+    final gen = SessionGenerator();
+    final plan = await gen.planificar(minutosDisponibles: dur);
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        expand: false,
+        builder: (ctx, sc) => ListView(
+          controller: sc,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          children: [
+            Text('Plan de la sesión ($dur min)', style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: AppSpacing.md),
+            if ((plan['tareas'] as List).isEmpty)
+              const Text('No hay tareas planificadas para este tiempo.'),
+            ...((plan['tareas'] as List<Tarea>).map((t) => ListTile(
+                  title: Text(t.tituloPreparacion),
+                  subtitle: Text(t.tituloSegmento ?? 'General'),
+                  trailing: Text('${t.minutosPlaneados} min'),
+                ))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generarTareasParaSesion() async {
+    final sesRows = await (await _db.database).query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
+    if (sesRows.isEmpty) return;
+    final dur = (sesRows.first['duracion_planeada'] as int?) ?? 0;
+    final gen = SessionGenerator();
+    final plan = await gen.planificar(minutosDisponibles: dur);
+    final tareas = plan['tareas'] as List<Tarea>;
+    for (final t in tareas) {
+      final tareaAInsertar = Tarea(
+        id: _uuid.v4(),
+        sesionId: widget.sesionId,
+        preparacionId: t.preparacionId,
+        segmentoId: t.segmentoId,
+        tituloPreparacion: t.tituloPreparacion,
+        tituloSegmento: t.tituloSegmento,
+        minutosPlaneados: t.minutosPlaneados,
+        motivo: t.motivo,
+      );
+      await _db.insertTarea(tareaAInsertar);
+    }
+    await _cargar();
   }
 
   Widget _botonResultado(String emoji, String valor) {

@@ -69,6 +69,8 @@ class Preparacion {
   int sesionesCount;
   String? profesorId;
   DateTime? ultimaPractica;
+  int? tempoActual;
+  int? tempoObjetivo;
   DateTime creadoEn;
 
   Preparacion({
@@ -86,6 +88,8 @@ class Preparacion {
     this.sesionesCount = 0,
     this.profesorId,
     this.ultimaPractica,
+    this.tempoActual,
+    this.tempoObjetivo,
     DateTime? creadoEn,
   }) : creadoEn = creadoEn ?? DateTime.now();
 
@@ -104,6 +108,8 @@ class Preparacion {
         'sesiones_count': sesionesCount,
         'profesor_id': profesorId,
         'ultima_practica': ultimaPractica?.toIso8601String(),
+        'tempo_actual': tempoActual,
+        'tempo_objetivo': tempoObjetivo,
         'creado_en': creadoEn.toIso8601String(),
       };
 
@@ -126,6 +132,8 @@ class Preparacion {
         ultimaPractica: m['ultima_practica'] != null
             ? DateTime.parse(m['ultima_practica'] as String)
             : null,
+        tempoActual: m['tempo_actual'] as int?,
+        tempoObjetivo: m['tempo_objetivo'] as int?,
         creadoEn: DateTime.parse(m['creado_en'] as String),
       );
 }
@@ -442,37 +450,7 @@ class Problema {
 /// Manifestación técnica recurrente ENTRE obras (trinos, octavas, terceras,
 /// polirritmias...). Distinto de Problema: un Patrón agrupa problemas que se
 /// repiten en distintos elementos ("familia de patrones").
-class Patron {
-  final String id;
-  String nombre;
-  String descripcion;
-  String familia; // agrupador libre, ej. "digitación", "independencia de manos"
-  DateTime creadoEn;
-
-  Patron({
-    required this.id,
-    required this.nombre,
-    this.descripcion = '',
-    this.familia = '',
-    DateTime? creadoEn,
-  }) : creadoEn = creadoEn ?? DateTime.now();
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'nombre': nombre,
-        'descripcion': descripcion,
-        'familia': familia,
-        'creado_en': creadoEn.toIso8601String(),
-      };
-
-  factory Patron.fromMap(Map<String, dynamic> m) => Patron(
-        id: m['id'] as String,
-        nombre: m['nombre'] as String,
-        descripcion: m['descripcion'] as String? ?? '',
-        familia: m['familia'] as String? ?? '',
-        creadoEn: DateTime.parse(m['creado_en'] as String),
-      );
-}
+// Patron model removed: not used in simplified app.
 
 /// Lo que realmente crece en el pianista (lectura, control rítmico, control
 /// del sonido...). Se alimenta manualmente por ahora de patrones/problemas/

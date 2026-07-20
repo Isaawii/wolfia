@@ -35,10 +35,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _generarSesion(int minutos) async {
+    final navCtx = context;
     final gen = SessionGenerator();
     final sesion = await gen.generar(minutosDisponibles: minutos);
     if (!mounted) return;
-    Navigator.of(context).push(MaterialPageRoute(
+    Navigator.of(navCtx).push(MaterialPageRoute(
       builder: (_) => SesionActivaScreen(sesionId: sesion.id),
     ));
     _cargar();
@@ -62,9 +63,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [15, 30, 45, 60, 90].map((m) {
                 return ActionChip(
                   label: Text('$m min'),
-                  onPressed: () {
+                  onPressed: () async {
+                    final parentContext = context;
                     Navigator.pop(ctx);
-                    _generarSesion(m);
+                    // Show preview before creating
+                    final gen = SessionGenerator();
+                    final plan = await gen.planificar(minutosDisponibles: m);
+                    if (!mounted) return;
+                    await showModalBottomSheet(
+                      context: parentContext,
+                      backgroundColor: AppColors.surface,
+                      isScrollControlled: true,
+                      builder: (previewCtx) => DraggableScrollableSheet(
+                        initialChildSize: 0.6,
+                        expand: false,
+                        builder: (previewCtx, sc) => ListView(
+                          controller: sc,
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          children: [
+                            Text('Plan de sesión ($m min)', style: Theme.of(previewCtx).textTheme.titleLarge),
+                            const SizedBox(height: AppSpacing.md),
+                            if ((plan['tareas'] as List).isEmpty)
+                              const Text('No hay tareas planificadas para este tiempo.'),
+                            ...((plan['tareas'] as List<Tarea>).map((t) => ListTile(
+                                  title: Text(t.tituloPreparacion),
+                                  subtitle: Text(t.tituloSegmento ?? 'General'),
+                                  trailing: Text('${t.minutosPlaneados} min'),
+                                ))),
+                            const SizedBox(height: AppSpacing.md),
+                            Row(children: [
+                              Expanded(child: ElevatedButton(onPressed: () {
+                                Navigator.pop(previewCtx);
+                                _generarSesion(m);
+                              }, child: const Text('Crear sesión'))),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(child: OutlinedButton(onPressed: () async {
+                                // Ask how many sessions to create
+                                final qty = await showDialog<int>(context: previewCtx, builder: (dCtx) {
+                                  final ctrl = TextEditingController(text: '1');
+                                  return AlertDialog(backgroundColor: AppColors.surface, title: const Text('¿Cuántas sesiones crear?'), content: TextField(controller: ctrl, keyboardType: TextInputType.number), actions: [TextButton(onPressed: () => Navigator.pop(dCtx, null), child: const Text('Cancelar')), ElevatedButton(onPressed: () => Navigator.pop(dCtx, int.tryParse(ctrl.text.trim())), child: const Text('Crear'))],);
+                                });
+                                if (qty != null && qty > 0) {
+                                  Navigator.pop(previewCtx);
+                                  for (int i = 0; i < qty; i++) {
+                                    await _generarSesion(m);
+                                  }
+                                }
+                              }, child: const Text('Crear varias'))),
+                            ])
+                          ],
+                        ),
+                      ),
+                    );
                   },
                 );
               }).toList(),

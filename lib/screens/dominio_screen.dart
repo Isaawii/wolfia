@@ -22,7 +22,7 @@ class _DominioScreenState extends State<DominioScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -44,7 +44,6 @@ class _DominioScreenState extends State<DominioScreen>
           unselectedLabelColor: AppColors.textSecondary,
           tabs: const [
             Tab(text: 'Problemas'),
-            Tab(text: 'Patrones'),
             Tab(text: 'Capacidades'),
             Tab(text: 'Categorías'),
             Tab(text: 'Profesores'),
@@ -55,7 +54,6 @@ class _DominioScreenState extends State<DominioScreen>
         controller: _tabController,
         children: const [
           _ProblemasTab(),
-          _PatronesTab(),
           _CapacidadesTab(),
           _CategoriasTab(),
           _ProfesoresTab(),
@@ -154,7 +152,7 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String>(
-                  value: categoria,
+                  initialValue: categoria,
                   decoration: const InputDecoration(labelText: 'Categoría'),
                   items: _categoriasProblema
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -162,7 +160,7 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                   onChanged: (v) => setStateDialog(() => categoria = v!),
                 ),
                 DropdownButtonFormField<String>(
-                  value: intensidad,
+                  initialValue: intensidad,
                   decoration: const InputDecoration(labelText: 'Intensidad'),
                   items: _intensidades
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -170,7 +168,7 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                   onChanged: (v) => setStateDialog(() => intensidad = v!),
                 ),
                 DropdownButtonFormField<String>(
-                  value: estado,
+                  initialValue: estado,
                   decoration: const InputDecoration(labelText: 'Estado'),
                   items: _estadosProblema
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -178,7 +176,7 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                   onChanged: (v) => setStateDialog(() => estado = v!),
                 ),
                 DropdownButtonFormField<String?>(
-                  value: preparacionId,
+                  initialValue: preparacionId,
                   decoration: const InputDecoration(
                       labelText: 'Preparación (opcional)'),
                   items: [
@@ -286,213 +284,7 @@ class _ProblemasTabState extends State<_ProblemasTab> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Patrones
-// ---------------------------------------------------------------------------
-
-class _PatronesTab extends StatefulWidget {
-  const _PatronesTab();
-  @override
-  State<_PatronesTab> createState() => _PatronesTabState();
-}
-
-class _PatronesTabState extends State<_PatronesTab> {
-  final _db = WolfiaDb.instance;
-  final _uuid = const Uuid();
-  List<Patron> _items = [];
-  Map<String, int> _elementosDistintos = {};
-  bool _cargando = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargar();
-  }
-
-  Future<void> _cargar() async {
-    final items = await _db.getPatrones();
-    final conteo = await _db.contarElementosDistintosPorPatron();
-    setState(() {
-      _items = items;
-      _elementosDistintos = conteo;
-      _cargando = false;
-    });
-  }
-
-  Future<void> _crearOEditar({Patron? existente}) async {
-    final nombreCtrl = TextEditingController(text: existente?.nombre ?? '');
-    final descCtrl = TextEditingController(text: existente?.descripcion ?? '');
-    final familiaCtrl = TextEditingController(text: existente?.familia ?? '');
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(existente == null ? 'Nuevo patrón' : 'Editar patrón'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nombreCtrl,
-                autofocus: true,
-                decoration: const InputDecoration(
-                    labelText: 'Nombre (ej: Trinos, Octavas, Polirritmia)')),
-            TextField(
-                controller: familiaCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Familia (opcional)')),
-            TextField(
-                controller: descCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Descripción (opcional)'),
-                maxLines: 2),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Guardar')),
-        ],
-      ),
-    );
-
-    if (result == true && nombreCtrl.text.trim().isNotEmpty) {
-      if (existente == null) {
-        await _db.insertPatron(Patron(
-          id: _uuid.v4(),
-          nombre: nombreCtrl.text.trim(),
-          familia: familiaCtrl.text.trim(),
-          descripcion: descCtrl.text.trim(),
-        ));
-      } else {
-        existente.nombre = nombreCtrl.text.trim();
-        existente.familia = familiaCtrl.text.trim();
-        existente.descripcion = descCtrl.text.trim();
-        await _db.updatePatron(existente);
-      }
-      _cargar();
-    }
-  }
-
-  Future<void> _gestionarVinculos(Patron patron) async {
-    final elementos = await _db.getElementos();
-    final problemas = await _db.getProblemas();
-    final elementosVinculados = await _db.getElementosDePatron(patron.id);
-    final problemasVinculados = await _db.getProblemasDePatron(patron.id);
-    final elementosIds = elementosVinculados.map((e) => e.id).toSet();
-    final problemasIds = problemasVinculados.map((p) => p.id).toSet();
-
-    await showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setStateSheet) => DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          expand: false,
-          builder: (ctx, scrollCtrl) => ListView(
-            controller: scrollCtrl,
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              Text('Vincular a "${patron.nombre}"',
-                  style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.md),
-              Text('Elementos', style: Theme.of(ctx).textTheme.titleMedium),
-              if (elementos.isEmpty) const Text('No hay elementos cargados.'),
-              ...elementos.map((e) => CheckboxListTile(
-                    title: Text(e.nombre),
-                    value: elementosIds.contains(e.id),
-                    onChanged: (v) async {
-                      if (v == true) {
-                        await _db.vincularPatronElemento(patron.id, e.id);
-                        elementosIds.add(e.id);
-                      } else {
-                        await _db.desvincularPatronElemento(patron.id, e.id);
-                        elementosIds.remove(e.id);
-                      }
-                      setStateSheet(() {});
-                    },
-                  )),
-              const SizedBox(height: AppSpacing.md),
-              Text('Problemas', style: Theme.of(ctx).textTheme.titleMedium),
-              if (problemas.isEmpty) const Text('No hay problemas cargados.'),
-              ...problemas.map((p) => CheckboxListTile(
-                    title: Text(p.descripcion),
-                    value: problemasIds.contains(p.id),
-                    onChanged: (v) async {
-                      if (v == true) {
-                        await _db.vincularPatronProblema(patron.id, p.id);
-                        problemasIds.add(p.id);
-                      } else {
-                        await _db.desvincularPatronProblema(patron.id, p.id);
-                        problemasIds.remove(p.id);
-                      }
-                      setStateSheet(() {});
-                    },
-                  )),
-            ],
-          ),
-        ),
-      ),
-    );
-    _cargar();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_cargando) return const Center(child: CircularProgressIndicator());
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _crearOEditar(),
-        child: const Icon(Icons.add),
-      ),
-      body: _items.isEmpty
-          ? const _EmptyHint(
-              texto: 'Todavía no registraste ningún patrón técnico recurrente.')
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: _items.length,
-              itemBuilder: (ctx, i) {
-                final p = _items[i];
-                final n = _elementosDistintos[p.id] ?? 0;
-                return Card(
-                  child: ListTile(
-                    onTap: () => _crearOEditar(existente: p),
-                    title: Text(p.nombre),
-                    subtitle: Text(
-                      n > 1
-                          ? '${p.familia.isEmpty ? "Sin familia" : p.familia} · se repite en $n obras'
-                          : (p.familia.isEmpty ? 'Sin familia' : p.familia),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon:
-                              const Icon(Icons.link, color: AppColors.primary),
-                          tooltip: 'Vincular elementos/problemas',
-                          onPressed: () => _gestionarVinculos(p),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: AppColors.textSecondary),
-                          onPressed: () async {
-                            await _db.deletePatron(p.id);
-                            _cargar();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
+// Patrones tab removed.
 
 // ---------------------------------------------------------------------------
 // Capacidades

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'theme.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/repertorio_screen.dart';
@@ -6,7 +7,9 @@ import 'screens/sesion_screen.dart';
 import 'screens/diario_screen.dart';
 import 'screens/dominio_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es');
   runApp(const WolfiaApp());
 }
 
