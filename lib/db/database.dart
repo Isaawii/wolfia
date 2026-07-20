@@ -115,8 +115,10 @@ class WolfiaDb {
             fecha TEXT NOT NULL
           );
         ''');
-        await db.execute('CREATE INDEX idx_prep_activa ON preparaciones(activa);');
-        await db.execute('CREATE INDEX idx_seg_prep ON segmentos(preparacion_id);');
+        await db
+            .execute('CREATE INDEX idx_prep_activa ON preparaciones(activa);');
+        await db
+            .execute('CREATE INDEX idx_seg_prep ON segmentos(preparacion_id);');
         await db.execute('CREATE INDEX idx_tarea_sesion ON tareas(sesion_id);');
         await _crearTablasFaseA(db);
       },
@@ -126,9 +128,12 @@ class WolfiaDb {
         }
         if (oldVersion < 3) {
           await db.execute('ALTER TABLE elementos ADD COLUMN compases INTEGER');
-          await db.execute('ALTER TABLE preparaciones ADD COLUMN categoria TEXT');
-          await db.execute('ALTER TABLE segmentos ADD COLUMN compas_inicio INTEGER');
-          await db.execute('ALTER TABLE segmentos ADD COLUMN compas_fin INTEGER');
+          await db
+              .execute('ALTER TABLE preparaciones ADD COLUMN categoria TEXT');
+          await db.execute(
+              'ALTER TABLE segmentos ADD COLUMN compas_inicio INTEGER');
+          await db
+              .execute('ALTER TABLE segmentos ADD COLUMN compas_fin INTEGER');
         }
       },
     );
@@ -223,8 +228,10 @@ class WolfiaDb {
         FOREIGN KEY (profesor_id) REFERENCES profesores(id)
       );
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_problema_prep ON problemas(preparacion_id);');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_recom_profesor ON recomendaciones(profesor_id);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_problema_prep ON problemas(preparacion_id);');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_recom_profesor ON recomendaciones(profesor_id);');
   }
 
   // ---------- Elementos ----------
@@ -236,12 +243,13 @@ class WolfiaDb {
     return rows.map(Elemento.fromMap).toList();
   }
 
-  Future<void> updateElemento(Elemento e) async =>
-      (await database).update('elementos', e.toMap(), where: 'id = ?', whereArgs: [e.id]);
+  Future<void> updateElemento(Elemento e) async => (await database)
+      .update('elementos', e.toMap(), where: 'id = ?', whereArgs: [e.id]);
 
   Future<void> deleteElemento(String id) async {
     final db = await database;
-    final preps = await db.query('preparaciones', where: 'elemento_id = ?', whereArgs: [id]);
+    final preps = await db
+        .query('preparaciones', where: 'elemento_id = ?', whereArgs: [id]);
     for (final prep in preps) {
       final prepId = prep['id'] as String;
       await deletePreparacion(prepId);
@@ -257,13 +265,14 @@ class WolfiaDb {
       .update('preparaciones', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
 
   Future<List<Preparacion>> getPreparacionesActivas() async {
-    final rows = await (await database)
-        .query('preparaciones', where: 'activa = 1', orderBy: 'ultima_practica ASC');
+    final rows = await (await database).query('preparaciones',
+        where: 'activa = 1', orderBy: 'ultima_practica ASC');
     return rows.map(Preparacion.fromMap).toList();
   }
 
   Future<List<Preparacion>> getTodasPreparaciones() async {
-    final rows = await (await database).query('preparaciones', orderBy: 'creado_en DESC');
+    final rows = await (await database)
+        .query('preparaciones', orderBy: 'creado_en DESC');
     return rows.map(Preparacion.fromMap).toList();
   }
 
@@ -288,7 +297,9 @@ class WolfiaDb {
 
   Future<List<Segmento>> getSegmentos(String preparacionId) async {
     final rows = await (await database).query('segmentos',
-        where: 'preparacion_id = ?', whereArgs: [preparacionId], orderBy: 'prioridad DESC');
+        where: 'preparacion_id = ?',
+        whereArgs: [preparacionId],
+        orderBy: 'prioridad DESC');
     return rows.map(Segmento.fromMap).toList();
   }
 
@@ -334,20 +345,21 @@ class WolfiaDb {
   }
 
   Future<List<Sesion>> getHistorial() async {
-    final rows = await (await database)
-        .query('sesiones', where: "estado = 'finalizada'", orderBy: 'fecha DESC');
+    final rows = await (await database).query('sesiones',
+        where: "estado = 'finalizada'", orderBy: 'fecha DESC');
     return rows.map(Sesion.fromMap).toList();
   }
 
   Future<Sesion?> getSesionEnCurso() async {
-    final rows = await (await database)
-        .query('sesiones', where: "estado != 'finalizada'", orderBy: 'fecha DESC', limit: 1);
+    final rows = await (await database).query('sesiones',
+        where: "estado != 'finalizada'", orderBy: 'fecha DESC', limit: 1);
     if (rows.isEmpty) return null;
     return Sesion.fromMap(rows.first);
   }
 
   // ---------- Notas / diario ----------
-  Future<void> insertNota(Nota n) async => (await database).insert('notas', n.toMap());
+  Future<void> insertNota(Nota n) async =>
+      (await database).insert('notas', n.toMap());
 
   Future<List<Nota>> getDiario() async {
     final rows = await (await database).query('notas', orderBy: 'fecha DESC');
@@ -383,8 +395,10 @@ class WolfiaDb {
 
   Future<void> deletePatron(String id) async {
     final db = await database;
-    await db.delete('patron_elementos', where: 'patron_id = ?', whereArgs: [id]);
-    await db.delete('patron_problemas', where: 'patron_id = ?', whereArgs: [id]);
+    await db
+        .delete('patron_elementos', where: 'patron_id = ?', whereArgs: [id]);
+    await db
+        .delete('patron_problemas', where: 'patron_id = ?', whereArgs: [id]);
     await db.delete('patrones', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -393,14 +407,17 @@ class WolfiaDb {
     return rows.map(Patron.fromMap).toList();
   }
 
-  Future<void> vincularPatronElemento(String patronId, String elementoId) async =>
+  Future<void> vincularPatronElemento(
+          String patronId, String elementoId) async =>
       (await database).insert('patron_elementos',
           {'patron_id': patronId, 'elemento_id': elementoId},
           conflictAlgorithm: ConflictAlgorithm.ignore);
 
-  Future<void> desvincularPatronElemento(String patronId, String elementoId) async =>
+  Future<void> desvincularPatronElemento(
+          String patronId, String elementoId) async =>
       (await database).delete('patron_elementos',
-          where: 'patron_id = ? AND elemento_id = ?', whereArgs: [patronId, elementoId]);
+          where: 'patron_id = ? AND elemento_id = ?',
+          whereArgs: [patronId, elementoId]);
 
   Future<List<Elemento>> getElementosDePatron(String patronId) async {
     final rows = await (await database).rawQuery('''
@@ -411,14 +428,17 @@ class WolfiaDb {
     return rows.map(Elemento.fromMap).toList();
   }
 
-  Future<void> vincularPatronProblema(String patronId, String problemaId) async =>
+  Future<void> vincularPatronProblema(
+          String patronId, String problemaId) async =>
       (await database).insert('patron_problemas',
           {'patron_id': patronId, 'problema_id': problemaId},
           conflictAlgorithm: ConflictAlgorithm.ignore);
 
-  Future<void> desvincularPatronProblema(String patronId, String problemaId) async =>
+  Future<void> desvincularPatronProblema(
+          String patronId, String problemaId) async =>
       (await database).delete('patron_problemas',
-          where: 'patron_id = ? AND problema_id = ?', whereArgs: [patronId, problemaId]);
+          where: 'patron_id = ? AND problema_id = ?',
+          whereArgs: [patronId, problemaId]);
 
   Future<List<Problema>> getProblemasDePatron(String patronId) async {
     final rows = await (await database).rawQuery('''
@@ -483,7 +503,8 @@ class WolfiaDb {
 
   Future<void> deleteProfesor(String id) async {
     final db = await database;
-    await db.delete('recomendaciones', where: 'profesor_id = ?', whereArgs: [id]);
+    await db
+        .delete('recomendaciones', where: 'profesor_id = ?', whereArgs: [id]);
     await db.delete('profesores', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -499,12 +520,14 @@ class WolfiaDb {
   Future<void> updateRecomendacion(Recomendacion r) async => (await database)
       .update('recomendaciones', r.toMap(), where: 'id = ?', whereArgs: [r.id]);
 
-  Future<void> deleteRecomendacion(String id) async =>
-      (await database).delete('recomendaciones', where: 'id = ?', whereArgs: [id]);
+  Future<void> deleteRecomendacion(String id) async => (await database)
+      .delete('recomendaciones', where: 'id = ?', whereArgs: [id]);
 
   Future<List<Recomendacion>> getRecomendaciones(String profesorId) async {
     final rows = await (await database).query('recomendaciones',
-        where: 'profesor_id = ?', whereArgs: [profesorId], orderBy: 'fecha DESC');
+        where: 'profesor_id = ?',
+        whereArgs: [profesorId],
+        orderBy: 'fecha DESC');
     return rows.map(Recomendacion.fromMap).toList();
   }
 }

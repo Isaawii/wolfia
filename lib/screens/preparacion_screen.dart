@@ -51,7 +51,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
 
   Future<void> _editarPreparacion() async {
     final nombreCtrl = TextEditingController(text: _prep?.nombre ?? '');
-    final objetivoCtrl = TextEditingController(text: _prep?.objetivoPrincipal ?? '');
+    final objetivoCtrl =
+        TextEditingController(text: _prep?.objetivoPrincipal ?? '');
     final categoriaCtrl = TextEditingController(text: _prep?.categoria ?? '');
 
     final ok = await showDialog<bool>(
@@ -134,7 +135,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   Future<void> _agregarOEditarSegmento({Segmento? segmento}) async {
     final nombreCtrl = TextEditingController(text: segmento?.nombre ?? '');
     final inicioCtrl = TextEditingController(
-        text: segmento?.compasInicio != null ? '${segmento!.compasInicio}' : '');
+        text:
+            segmento?.compasInicio != null ? '${segmento!.compasInicio}' : '');
     final finCtrl = TextEditingController(
         text: segmento?.compasFin != null ? '${segmento!.compasFin}' : '');
     int prioridad = segmento?.prioridad ?? 3;
@@ -237,18 +239,26 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   }
 
   Widget _buildDiagrama() {
-    if (_elemento == null || _elemento!.compases == null || _elemento!.compases! <= 0) {
+    if (_elemento == null ||
+        _elemento!.compases == null ||
+        _elemento!.compases! <= 0) {
       return const SizedBox.shrink();
     }
     final total = _elemento!.compases!;
-    final visibles = _segmentos.where((s) => s.compasInicio != null && s.compasFin != null && s.compasFin! > s.compasInicio!).toList();
+    final visibles = _segmentos
+        .where((s) =>
+            s.compasInicio != null &&
+            s.compasFin != null &&
+            s.compasFin! > s.compasInicio!)
+        .toList();
     if (visibles.isEmpty) {
       return const SizedBox.shrink();
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Diagrama de compases', style: Theme.of(context).textTheme.titleMedium),
+        Text('Diagrama de compases',
+            style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         Container(
           height: 40,
@@ -287,7 +297,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text('Total: $total compases', style: Theme.of(context).textTheme.bodyMedium),
+        Text('Total: $total compases',
+            style: Theme.of(context).textTheme.bodyMedium),
       ],
     );
   }
@@ -400,7 +411,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                         'Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}',
                       ),
                       if (s.compasInicio != null || s.compasFin != null)
-                        Text('Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
+                        Text(
+                            'Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
                     ],
                   ),
                   trailing: PopupMenuButton<String>(
@@ -414,8 +426,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                           builder: (ctx) => AlertDialog(
                             backgroundColor: AppColors.surface,
                             title: const Text('Eliminar segmento'),
-                            content: const Text(
-                                '¿Querés borrar este segmento?'),
+                            content:
+                                const Text('¿Querés borrar este segmento?'),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx, false),
@@ -445,7 +457,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Preparaciones', style: Theme.of(context).textTheme.titleMedium),
+              Text('Preparaciones',
+                  style: Theme.of(context).textTheme.titleMedium),
               Row(
                 children: [
                   IconButton(

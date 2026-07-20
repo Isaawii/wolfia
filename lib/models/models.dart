@@ -354,7 +354,8 @@ class Nota {
 class Problema {
   final String id;
   String descripcion;
-  String categoria; // tecnica/musicalidad/memoria/lectura/interpretacion/postura/sonido/ritmo/pedal/digitacion
+  String
+      categoria; // tecnica/musicalidad/memoria/lectura/interpretacion/postura/sonido/ritmo/pedal/digitacion
   String intensidad; // leve/media/alta/critica
   String estado; // activo/en_progreso/resuelto
   String? preparacionId;
@@ -363,7 +364,8 @@ class Problema {
   DateTime? ultimaAparicion;
   int cantidadSesiones;
   String soluciones; // texto libre: qué se probó / qué funcionó
-  String ejerciciosRelacionados; // texto libre por ahora (sin banco de ejercicios todavía)
+  String
+      ejerciciosRelacionados; // texto libre por ahora (sin banco de ejercicios todavía)
 
   Problema({
     required this.id,
@@ -520,7 +522,8 @@ class Categoria {
         id: m['id'] as String,
         nombre: m['nombre'] as String,
         colorHex: m['color_hex'] as String? ?? '#C9A84C',
-        diasSemana: m['dias_semana'] as String? ?? 'lun,mar,mie,jue,vie,sab,dom',
+        diasSemana:
+            m['dias_semana'] as String? ?? 'lun,mar,mie,jue,vie,sab,dom',
         minutosObjetivo: m['minutos_objetivo'] as int? ?? 0,
       );
 }
