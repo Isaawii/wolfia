@@ -805,7 +805,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   child: _buildDiagrama()),
             ..._segmentos.map((s) {
               final objetivosDelSegmento =
-                  _objetivos.where((o) => o.segmentoId == s.id).toList();
+                  _objetivos.where((o) => o.segmentoId == s.id);
               return Card(
                 child: ExpansionTile(
                   title: Text(s.nombre),
@@ -836,10 +836,15 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                                 'Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'),
                             trailing: PopupMenuButton<String>(
                               onSelected: (v) async {
-                                if (v == 'editar') await _editarObjetivo(o);
-                                if (v == 'minutos')
+                                if (v == 'editar') {
+                                  await _editarObjetivo(o);
+                                }
+                                if (v == 'minutos') {
                                   await _addMinutesToObjetivo(o);
-                                if (v == 'eliminar') await _eliminarObjetivo(o);
+                                }
+                                if (v == 'eliminar') {
+                                  await _eliminarObjetivo(o);
+                                }
                               },
                               itemBuilder: (_) => const [
                                 PopupMenuItem(
@@ -869,8 +874,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                     const SizedBox(height: AppSpacing.sm),
                     Builder(builder: (ctx) {
                       final problemasDelSegmento = _problemas
-                          .where((p) => p.segmentoId == s.id)
-                          .toList();
+                          .where((p) => p.segmentoId == s.id);
                       if (problemasDelSegmento.isEmpty)
                         return const SizedBox.shrink();
                       return Column(

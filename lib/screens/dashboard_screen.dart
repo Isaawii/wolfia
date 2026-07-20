@@ -108,8 +108,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: OutlinedButton(
                                       onPressed: () async {
                                         // Ask how many sessions to create
+                                        final dialogContext = previewCtx;
                                         final qty = await showDialog<int>(
-                                            context: previewCtx,
+                                            context: dialogContext,
                                             builder: (dCtx) {
                                               final ctrl =
                                                   TextEditingController(
