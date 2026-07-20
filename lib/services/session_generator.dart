@@ -67,19 +67,16 @@ class SessionGenerator {
           .where((o) => o.estado != 'cumplido' && o.estado != 'descartado')
           .toList();
 
-      final objetivosSegmento = objetivosPendientes
-          .where((o) => o.segmentoId != null)
-          .toList();
-      final objetivosPrep = objetivosPendientes
-          .where((o) => o.segmentoId == null)
-          .toList();
+      final objetivosSegmento =
+          objetivosPendientes.where((o) => o.segmentoId != null).toList();
+      final objetivosPrep =
+          objetivosPendientes.where((o) => o.segmentoId == null).toList();
 
       if (objetivosSegmento.isNotEmpty) {
         final candidatos = <_CandidatoObjetivo>[];
         for (final seg in segsDePrep) {
-          final objs = objetivosSegmento
-              .where((o) => o.segmentoId == seg.id)
-              .toList();
+          final objs =
+              objetivosSegmento.where((o) => o.segmentoId == seg.id).toList();
           if (objs.isEmpty) continue;
           for (final obj in objs) {
             final score = _scoreObjetivo(
@@ -206,7 +203,8 @@ class SessionGenerator {
       orElse: () => Elemento(id: '', nombre: '', tipo: 'ejercicio'),
     );
     final estadoMental = obj.estadoMental ?? 'neutral';
-    final categoriaPermiteHoy = _categoriaPermiteHoy(categorias, prep.categoria);
+    final categoriaPermiteHoy =
+        _categoriaPermiteHoy(categorias, prep.categoria);
     var score = 100.0;
     score += (seg?.prioridad ?? prep.prioridad) * 8;
     score += dias.clamp(0, 60) * 1.2;
@@ -222,7 +220,8 @@ class SessionGenerator {
     return score;
   }
 
-  bool _categoriaPermiteHoy(List<Categoria> categorias, String? categoriaNombre) {
+  bool _categoriaPermiteHoy(
+      List<Categoria> categorias, String? categoriaNombre) {
     if (categoriaNombre == null || categoriaNombre.isEmpty) return true;
     final categoria = categorias.firstWhere(
       (c) => c.nombre == categoriaNombre,

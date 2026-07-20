@@ -239,11 +239,13 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
               const SizedBox(height: AppSpacing.sm),
               TextField(
                   controller: minCtrl,
-                  decoration: const InputDecoration(labelText: 'Tiempo mínimo (min)')),
+                  decoration:
+                      const InputDecoration(labelText: 'Tiempo mínimo (min)')),
               const SizedBox(height: AppSpacing.sm),
               TextField(
                   controller: maxCtrl,
-                  decoration: const InputDecoration(labelText: 'Tiempo máximo (min)')),
+                  decoration:
+                      const InputDecoration(labelText: 'Tiempo máximo (min)')),
             ],
           ),
         ),
@@ -600,13 +602,15 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: minCtrl,
-                decoration: const InputDecoration(labelText: 'Tiempo mínimo (min)'),
+                decoration:
+                    const InputDecoration(labelText: 'Tiempo mínimo (min)'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: maxCtrl,
-                decoration: const InputDecoration(labelText: 'Tiempo máximo (min)'),
+                decoration:
+                    const InputDecoration(labelText: 'Tiempo máximo (min)'),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -670,13 +674,15 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: minCtrl,
-                decoration: const InputDecoration(labelText: 'Tiempo mínimo (min)'),
+                decoration:
+                    const InputDecoration(labelText: 'Tiempo mínimo (min)'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: maxCtrl,
-                decoration: const InputDecoration(labelText: 'Tiempo máximo (min)'),
+                decoration:
+                    const InputDecoration(labelText: 'Tiempo máximo (min)'),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -921,8 +927,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Builder(builder: (ctx) {
-                      final problemasDelSegmento = _problemas
-                          .where((p) => p.segmentoId == s.id);
+                      final problemasDelSegmento =
+                          _problemas.where((p) => p.segmentoId == s.id);
                       if (problemasDelSegmento.isEmpty)
                         return const SizedBox.shrink();
                       return Column(

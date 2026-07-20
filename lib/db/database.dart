@@ -172,18 +172,16 @@ class WolfiaDb {
               'ALTER TABLE preparaciones ADD COLUMN tempo_objetivo INTEGER');
         }
         if (oldVersion < 7) {
-          await db.execute(
-              'ALTER TABLE objetivos ADD COLUMN estado_mental TEXT');
+          await db
+              .execute('ALTER TABLE objetivos ADD COLUMN estado_mental TEXT');
           await db.execute(
               'ALTER TABLE objetivos ADD COLUMN tiempo_minimo INTEGER NOT NULL DEFAULT 10');
           await db.execute(
               'ALTER TABLE objetivos ADD COLUMN tiempo_maximo INTEGER NOT NULL DEFAULT 25');
-          await db.execute(
-              'ALTER TABLE tareas ADD COLUMN objetivo_id TEXT');
-          await db.execute(
-              'ALTER TABLE tareas ADD COLUMN titulo_objetivo TEXT');
-          await db.execute(
-              'ALTER TABLE tareas ADD COLUMN tipo_objetivo TEXT');
+          await db.execute('ALTER TABLE tareas ADD COLUMN objetivo_id TEXT');
+          await db
+              .execute('ALTER TABLE tareas ADD COLUMN titulo_objetivo TEXT');
+          await db.execute('ALTER TABLE tareas ADD COLUMN tipo_objetivo TEXT');
         }
       },
     );

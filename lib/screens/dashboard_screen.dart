@@ -90,7 +90,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'No hay tareas planificadas para este tiempo.'),
                             ...((plan['tareas'] as List<Tarea>).map((t) =>
                                 ListTile(
-                                  title: Text(t.tituloObjetivo ?? t.tituloPreparacion),
+                                  title: Text(
+                                      t.tituloObjetivo ?? t.tituloPreparacion),
                                   subtitle: Text(
                                     '${t.tituloPreparacion}${t.tituloSegmento != null ? ' · ${t.tituloSegmento}' : ''}',
                                   ),
