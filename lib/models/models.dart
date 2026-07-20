@@ -64,6 +64,10 @@ class Preparacion {
   bool activa;
   DateTime? fechaObjetivo;
   int puntos;
+  int prioridad; // 1-5
+  int tiempoInvertido; // minutos
+  int sesionesCount;
+  String? profesorId;
   DateTime? ultimaPractica;
   DateTime creadoEn;
 
@@ -77,6 +81,10 @@ class Preparacion {
     this.activa = true,
     this.fechaObjetivo,
     this.puntos = 0,
+    this.prioridad = 3,
+    this.tiempoInvertido = 0,
+    this.sesionesCount = 0,
+    this.profesorId,
     this.ultimaPractica,
     DateTime? creadoEn,
   }) : creadoEn = creadoEn ?? DateTime.now();
@@ -91,6 +99,10 @@ class Preparacion {
         'activa': activa ? 1 : 0,
         'fecha_objetivo': fechaObjetivo?.toIso8601String(),
         'puntos': puntos,
+        'prioridad': prioridad,
+        'tiempo_invertido': tiempoInvertido,
+        'sesiones_count': sesionesCount,
+        'profesor_id': profesorId,
         'ultima_practica': ultimaPractica?.toIso8601String(),
         'creado_en': creadoEn.toIso8601String(),
       };
@@ -107,6 +119,10 @@ class Preparacion {
             ? DateTime.parse(m['fecha_objetivo'] as String)
             : null,
         puntos: m['puntos'] as int? ?? 0,
+        prioridad: m['prioridad'] as int? ?? 3,
+        tiempoInvertido: m['tiempo_invertido'] as int? ?? 0,
+        sesionesCount: m['sesiones_count'] as int? ?? 0,
+        profesorId: m['profesor_id'] as String?,
         ultimaPractica: m['ultima_practica'] != null
             ? DateTime.parse(m['ultima_practica'] as String)
             : null,
@@ -184,6 +200,8 @@ class Objetivo {
   String descripcion;
   String estado; // pendiente/en_progreso/cumplido/descartado
   int prioridad; // 1-5
+  int puntos; // acumulados
+  int puntosPorMinuto; // puntos asignados por minuto trabajado
 
   Objetivo({
     required this.id,
@@ -192,6 +210,8 @@ class Objetivo {
     required this.descripcion,
     this.estado = 'pendiente',
     this.prioridad = 3,
+    this.puntos = 0,
+    this.puntosPorMinuto = 1,
   });
 
   Map<String, dynamic> toMap() => {
@@ -201,6 +221,8 @@ class Objetivo {
         'descripcion': descripcion,
         'estado': estado,
         'prioridad': prioridad,
+        'puntos': puntos,
+        'puntos_por_minuto': puntosPorMinuto,
       };
 
   factory Objetivo.fromMap(Map<String, dynamic> m) => Objetivo(
@@ -210,6 +232,8 @@ class Objetivo {
         descripcion: m['descripcion'] as String,
         estado: m['estado'] as String? ?? 'pendiente',
         prioridad: m['prioridad'] as int? ?? 3,
+          puntos: m['puntos'] as int? ?? 0,
+          puntosPorMinuto: m['puntos_por_minuto'] as int? ?? 1,
       );
 }
 

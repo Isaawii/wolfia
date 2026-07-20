@@ -21,7 +21,7 @@ class WolfiaDb {
     final path = join(dbPath, 'wolfia.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE elementos (
@@ -47,6 +47,10 @@ class WolfiaDb {
             activa INTEGER NOT NULL,
             fecha_objetivo TEXT,
             puntos INTEGER NOT NULL,
+            prioridad INTEGER NOT NULL,
+            tiempo_invertido INTEGER NOT NULL,
+            sesiones_count INTEGER NOT NULL,
+            profesor_id TEXT,
             ultima_practica TEXT,
             creado_en TEXT NOT NULL,
             FOREIGN KEY (elemento_id) REFERENCES elementos(id)
@@ -76,6 +80,8 @@ class WolfiaDb {
             descripcion TEXT NOT NULL,
             estado TEXT NOT NULL,
             prioridad INTEGER NOT NULL,
+            puntos INTEGER NOT NULL,
+            puntos_por_minuto INTEGER NOT NULL,
             FOREIGN KEY (preparacion_id) REFERENCES preparaciones(id)
           );
         ''');
@@ -134,6 +140,16 @@ class WolfiaDb {
               'ALTER TABLE segmentos ADD COLUMN compas_inicio INTEGER');
           await db
               .execute('ALTER TABLE segmentos ADD COLUMN compas_fin INTEGER');
+        }
+        if (oldVersion < 4) {
+          await db.execute('ALTER TABLE preparaciones ADD COLUMN prioridad INTEGER DEFAULT 3');
+          await db.execute('ALTER TABLE preparaciones ADD COLUMN tiempo_invertido INTEGER DEFAULT 0');
+          await db.execute('ALTER TABLE preparaciones ADD COLUMN sesiones_count INTEGER DEFAULT 0');
+          await db.execute('ALTER TABLE preparaciones ADD COLUMN profesor_id TEXT');
+        }
+        if (oldVersion < 5) {
+          await db.execute('ALTER TABLE objetivos ADD COLUMN puntos INTEGER DEFAULT 0');
+          await db.execute('ALTER TABLE objetivos ADD COLUMN puntos_por_minuto INTEGER DEFAULT 1');
         }
       },
     );
@@ -363,6 +379,12 @@ class WolfiaDb {
 
   Future<List<Nota>> getDiario() async {
     final rows = await (await database).query('notas', orderBy: 'fecha DESC');
+    return rows.map(Nota.fromMap).toList();
+  }
+
+  Future<List<Nota>> getNotasPorPreparacion(String preparacionId) async {
+    final rows = await (await database).query('notas',
+        where: 'preparacion_id = ?', whereArgs: [preparacionId], orderBy: 'fecha DESC');
     return rows.map(Nota.fromMap).toList();
   }
 

@@ -19,6 +19,9 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   Elemento? _elemento;
   List<Segmento> _segmentos = [];
   List<Objetivo> _objetivos = [];
+  List<Categoria> _categorias = [];
+  List<Profesor> _profesores = [];
+  List<Nota> _notas = [];
   bool _cargando = true;
 
   @override
@@ -34,11 +37,17 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     final elemento = elementos.firstWhere((e) => e.id == prep.elementoId);
     final segmentos = await _db.getSegmentos(widget.preparacionId);
     final objetivos = await _db.getObjetivos(widget.preparacionId);
+    final categorias = await _db.getCategorias();
+    final profesores = await _db.getProfesores();
+    final notas = await _db.getNotasPorPreparacion(widget.preparacionId);
     setState(() {
       _prep = prep;
       _elemento = elemento;
       _segmentos = segmentos;
       _objetivos = objetivos;
+      _categorias = categorias;
+      _profesores = profesores;
+      _notas = notas;
       _cargando = false;
     });
   }
@@ -54,44 +63,100 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     final objetivoCtrl =
         TextEditingController(text: _prep?.objetivoPrincipal ?? '');
     final categoriaCtrl = TextEditingController(text: _prep?.categoria ?? '');
+    DateTime? fechaObj = _prep?.fechaObjetivo;
+    int prioridad = _prep?.prioridad ?? 3;
+    String? profesorId = _prep?.profesorId;
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Editar preparación'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nombreCtrl,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-              autofocus: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Editar preparación'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nombreCtrl,
+                  decoration: const InputDecoration(labelText: 'Nombre'),
+                  autofocus: true,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: objetivoCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Objetivo principal (opcional)',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                DropdownButtonFormField<String?>(
+                  initialValue: categoriaCtrl.text.isEmpty ? null : categoriaCtrl.text,
+                  decoration: const InputDecoration(labelText: 'Categoría (opcional)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('— ninguna —')),
+                    ..._categorias.map((c) => DropdownMenuItem(value: c.nombre, child: Text(c.nombre)))
+                  ],
+                  onChanged: (v) => categoriaCtrl.text = v ?? '',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    const Text('Prioridad:'),
+                    Expanded(
+                      child: Slider(
+                        value: prioridad.toDouble(),
+                        min: 1,
+                        max: 5,
+                        divisions: 4,
+                        label: '$prioridad',
+                        onChanged: (v) => setStateDialog(() => prioridad = v.round()),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                        child: Text(fechaObj == null
+                          ? 'Sin fecha límite'
+                          : 'Límite: ${fechaObj!.toLocal().toString().split(' ').first}'),
+                    ),
+                    TextButton(
+                        onPressed: () async {
+                          final d = await showDatePicker(
+                              context: context,
+                              initialDate: fechaObj ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100));
+                          if (d != null) setStateDialog(() => fechaObj = d);
+                        },
+                        child: const Text('Seleccionar'))
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                DropdownButtonFormField<String?>(
+                  initialValue: profesorId,
+                  decoration: const InputDecoration(labelText: 'Profesor (opcional)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('— ninguno —')),
+                    ..._profesores.map((p) => DropdownMenuItem(value: p.id, child: Text(p.nombre)))
+                  ],
+                  onChanged: (v) => setStateDialog(() => profesorId = v),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: objetivoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Objetivo principal (opcional)',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: categoriaCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Categoría (opcional)',
-              ),
-            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar')),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Guardar')),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Guardar')),
-        ],
       ),
     );
 
@@ -101,7 +166,117 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
           objetivoCtrl.text.trim().isEmpty ? null : objetivoCtrl.text.trim();
       _prep!.categoria =
           categoriaCtrl.text.trim().isEmpty ? null : categoriaCtrl.text.trim();
+      _prep!.fechaObjetivo = fechaObj;
+      _prep!.prioridad = prioridad;
+      _prep!.profesorId = profesorId;
       await _db.updatePreparacion(_prep!);
+      _cargar();
+    }
+  }
+
+  Future<void> _editarObjetivo(Objetivo o) async {
+    final descCtrl = TextEditingController(text: o.descripcion);
+    final puntosCtrl = TextEditingController(text: '${o.puntos}');
+    final rateCtrl = TextEditingController(text: '${o.puntosPorMinuto}');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Editar objetivo'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Descripción')),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(controller: puntosCtrl, decoration: const InputDecoration(labelText: 'Puntos acumulados'), keyboardType: TextInputType.number),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(controller: rateCtrl, decoration: const InputDecoration(labelText: 'Puntos por minuto'), keyboardType: TextInputType.number),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Guardar')),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      o.descripcion = descCtrl.text.trim();
+      o.puntos = int.tryParse(puntosCtrl.text.trim()) ?? o.puntos;
+      o.puntosPorMinuto = int.tryParse(rateCtrl.text.trim()) ?? o.puntosPorMinuto;
+      await _db.updateObjetivo(o);
+      _cargar();
+    }
+  }
+
+  Future<void> _eliminarObjetivo(Objetivo o) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Eliminar objetivo'),
+        content: const Text('¿Querés borrar este objetivo?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await (await _db.database).delete('objetivos', where: 'id = ?', whereArgs: [o.id]);
+      _cargar();
+    }
+  }
+
+  Future<void> _addMinutesToObjetivo(Objetivo o) async {
+    final minsCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Agregar minutos trabajados'),
+        content: TextField(
+          controller: minsCtrl,
+          decoration: const InputDecoration(labelText: 'Minutos'),
+          keyboardType: TextInputType.number,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Agregar')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final mins = int.tryParse(minsCtrl.text.trim()) ?? 0;
+      if (mins > 0) {
+        o.puntos += mins * o.puntosPorMinuto;
+        await _db.updateObjetivo(o);
+        _cargar();
+      }
+    }
+  }
+
+  Future<void> _agregarONota() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Nueva nota / link'),
+        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Texto o URL'), autofocus: true),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Crear')),
+        ],
+      ),
+    );
+    if (ok == true && ctrl.text.trim().isNotEmpty) {
+      final n = Nota(id: _uuid.v4(), contenido: ctrl.text.trim(), preparacionId: widget.preparacionId);
+      await _db.insertNota(n);
       _cargar();
     }
   }
@@ -135,8 +310,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   Future<void> _agregarOEditarSegmento({Segmento? segmento}) async {
     final nombreCtrl = TextEditingController(text: segmento?.nombre ?? '');
     final inicioCtrl = TextEditingController(
-        text:
-            segmento?.compasInicio != null ? '${segmento!.compasInicio}' : '');
+        text: segmento?.compasInicio != null ? '${segmento!.compasInicio}' : '');
     final finCtrl = TextEditingController(
         text: segmento?.compasFin != null ? '${segmento!.compasFin}' : '');
     int prioridad = segmento?.prioridad ?? 3;
@@ -153,8 +327,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
               children: [
                 TextField(
                   controller: nombreCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Nombre (ej: Compases 34-48)'),
+                  decoration: const InputDecoration(labelText: 'Nombre (ej: Compases 34-48)'),
                   autofocus: true,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -192,8 +365,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                         max: 5,
                         divisions: 4,
                         label: '$prioridad',
-                        onChanged: (v) =>
-                            setStateDialog(() => prioridad = v.round()),
+                        onChanged: (v) => setStateDialog(() => prioridad = v.round()),
                       ),
                     ),
                   ],
@@ -202,12 +374,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
             ),
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar')),
-            ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(segmento == null ? 'Crear' : 'Guardar')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text(segmento == null ? 'Crear' : 'Guardar')),
           ],
         ),
       ),
@@ -239,26 +407,19 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   }
 
   Widget _buildDiagrama() {
-    if (_elemento == null ||
-        _elemento!.compases == null ||
-        _elemento!.compases! <= 0) {
+    if (_elemento == null || _elemento!.compases == null || _elemento!.compases! <= 0) {
       return const SizedBox.shrink();
     }
     final total = _elemento!.compases!;
     final visibles = _segmentos
         .where((s) =>
-            s.compasInicio != null &&
-            s.compasFin != null &&
-            s.compasFin! > s.compasInicio!)
+            s.compasInicio != null && s.compasFin != null && s.compasFin! > s.compasInicio!)
         .toList();
-    if (visibles.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (visibles.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Diagrama de compases',
-            style: Theme.of(context).textTheme.titleMedium),
+        Text('Diagrama de compases', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         Container(
           height: 40,
@@ -297,8 +458,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text('Total: $total compases',
-            style: Theme.of(context).textTheme.bodyMedium),
+        Text('Total: $total compases', style: Theme.of(context).textTheme.bodyMedium),
       ],
     );
   }
@@ -322,15 +482,30 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
 
   Future<void> _agregarObjetivo() async {
     final descCtrl = TextEditingController();
+    final puntosPorMinCtrl = TextEditingController(text: '1');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Nuevo objetivo'),
-        content: TextField(
-          controller: descCtrl,
-          decoration: const InputDecoration(labelText: 'Ej: Negra = 108'),
-          autofocus: true,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(labelText: 'Ej: Negra = 108'),
+                autofocus: true,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: puntosPorMinCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Puntos por minuto (ej: 1)'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -344,10 +519,13 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     );
 
     if (ok == true && descCtrl.text.trim().isNotEmpty) {
+      final rate = int.tryParse(puntosPorMinCtrl.text.trim()) ?? 1;
       final obj = Objetivo(
         id: _uuid.v4(),
         preparacionId: widget.preparacionId,
         descripcion: descCtrl.text.trim(),
+        puntos: 0,
+        puntosPorMinuto: rate,
       );
       await _db.insertObjetivo(obj);
       _cargar();
@@ -365,137 +543,73 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     if (_cargando) return const Center(child: CircularProgressIndicator());
     final prep = _prep!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(prep.nombre),
-        actions: [
-          IconButton(
-            icon: Icon(prep.activa ? Icons.pause : Icons.play_arrow),
-            tooltip: prep.activa ? 'Archivar' : 'Activar',
-            onPressed: _toggleActiva,
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          if (prep.objetivoPrincipal != null) ...[
-            Text('Objetivo principal',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.xs),
-            Text(prep.objetivoPrincipal!,
-                style: const TextStyle(color: AppColors.primary)),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Segmentos', style: Theme.of(context).textTheme.titleMedium),
-              IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _agregarOEditarSegmento()),
-            ],
-          ),
-          if (_elemento != null && _elemento!.compases != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-              child: _buildDiagrama(),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(prep.nombre),
+          actions: [
+            IconButton(
+              icon: Icon(prep.activa ? Icons.pause : Icons.play_arrow),
+              tooltip: prep.activa ? 'Archivar' : 'Activar',
+              onPressed: _toggleActiva,
             ),
-          ..._segmentos.map((s) => Card(
-                child: ListTile(
-                  title: Text(s.nombre),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}',
-                      ),
-                      if (s.compasInicio != null || s.compasFin != null)
-                        Text(
-                            'Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) async {
-                      if (value == 'editar') {
-                        await _agregarOEditarSegmento(segmento: s);
-                      } else if (value == 'eliminar') {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: AppColors.surface,
-                            title: const Text('Eliminar segmento'),
-                            content:
-                                const Text('¿Querés borrar este segmento?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text('Cancelar'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                child: const Text('Eliminar'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true) {
-                          await _db.deleteSegmento(s.id);
-                          _cargar();
-                        }
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'editar', child: Text('Editar')),
-                      PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
-                    ],
-                  ),
-                ),
-              )),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Preparaciones',
-                  style: Theme.of(context).textTheme.titleMedium),
-              Row(
-                children: [
-                  IconButton(
-                      icon: const Icon(Icons.edit),
-                      tooltip: 'Editar preparación',
-                      onPressed: _editarPreparacion),
-                  IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: 'Eliminar preparación',
-                      onPressed: _eliminarPreparacion),
-                ],
-              )
+            IconButton(
+                icon: const Icon(Icons.edit),
+                tooltip: 'Editar preparación',
+                onPressed: _editarPreparacion),
+            IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Eliminar preparación',
+                onPressed: _eliminarPreparacion),
+          ],
+          bottom: const TabBar(tabs: [Tab(text: 'General'), Tab(text: 'Segmentos'), Tab(text: 'Objetivos'), Tab(text: 'Material')]),
+        ),
+        body: TabBarView(children: [
+          // General tab
+          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
+            if (prep.objetivoPrincipal != null) ...[
+              Text('Objetivo principal', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.xs),
+              Text(prep.objetivoPrincipal!, style: const TextStyle(color: AppColors.primary)),
+              const SizedBox(height: AppSpacing.lg),
             ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Objetivos', style: Theme.of(context).textTheme.titleMedium),
-              IconButton(
-                  icon: const Icon(Icons.add), onPressed: _agregarObjetivo),
-            ],
-          ),
-          ..._objetivos.map((o) => CheckboxListTile(
-                value: o.estado == 'cumplido',
-                onChanged: (_) => _toggleObjetivo(o),
-                title: Text(
-                  o.descripcion,
-                  style: TextStyle(
-                    decoration: o.estado == 'cumplido'
-                        ? TextDecoration.lineThrough
-                        : null,
-                  ),
-                ),
-                activeColor: AppColors.primary,
-              )),
-        ],
+            Text('Estado: ${prep.estado}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Fecha inicio: ${prep.creadoEn.toLocal().toString().split(' ').first}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Fecha límite: ${prep.fechaObjetivo != null ? prep.fechaObjetivo!.toLocal().toString().split(' ').first : '—'}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Prioridad: ${prep.prioridad}/5'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Puntos acumulados: ${prep.puntos}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Tiempo invertido: ${prep.tiempoInvertido} min'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Sesiones involucradas: ${prep.sesionesCount}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Categoría: ${prep.categoria ?? '—'}'),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Profesor: ${_profesores.firstWhere((p) => p.id == prep.profesorId, orElse: () => Profesor(id: '', nombre: '—')).nombre}'),
+          ]),
+          // Segmentos tab
+          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Segmentos', style: Theme.of(context).textTheme.titleMedium), IconButton(icon: const Icon(Icons.add), onPressed: () => _agregarOEditarSegmento())]),
+            if (_elemento != null && _elemento!.compases != null) Padding(padding: const EdgeInsets.only(bottom: AppSpacing.lg), child: _buildDiagrama()),
+            ..._segmentos.map((s) => Card(child: ListTile(title: Text(s.nombre), subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}'), if (s.compasInicio != null || s.compasFin != null) Text('Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}')]), trailing: PopupMenuButton<String>(icon: const Icon(Icons.more_vert), onSelected: (value) async { if (value == 'editar') { await _agregarOEditarSegmento(segmento: s); } else if (value == 'eliminar') { final confirm = await showDialog<bool>( context: context, builder: (ctx) => AlertDialog( backgroundColor: AppColors.surface, title: const Text('Eliminar segmento'), content: const Text('¿Querés borrar este segmento?'), actions: [ TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')), ], ), ); if (confirm == true) { await _db.deleteSegmento(s.id); _cargar(); } } }, itemBuilder: (_) => const [ PopupMenuItem(value: 'editar', child: Text('Editar')), PopupMenuItem(value: 'eliminar', child: Text('Eliminar')), ], ), ))),
+          ]),
+          // Objetivos tab
+          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Objetivos', style: Theme.of(context).textTheme.titleMedium), IconButton(icon: const Icon(Icons.add), onPressed: _agregarObjetivo)]),
+            ..._objetivos.map((o) => Card(child: CheckboxListTile(value: o.estado == 'cumplido', onChanged: (_) => _toggleObjetivo(o), title: Text(o.descripcion, style: TextStyle(decoration: o.estado == 'cumplido' ? TextDecoration.lineThrough : null)), subtitle: Text('Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'), activeColor: AppColors.primary, secondary: PopupMenuButton<String>(icon: const Icon(Icons.more_vert), onSelected: (v) async { if (v == 'editar') { await _editarObjetivo(o); } else if (v == 'minutos') { await _addMinutesToObjetivo(o); } else if (v == 'eliminar') { await _eliminarObjetivo(o); } }, itemBuilder: (_) => const [ PopupMenuItem(value: 'editar', child: Text('Editar')), PopupMenuItem(value: 'minutos', child: Text('Agregar minutos')), PopupMenuItem(value: 'eliminar', child: Text('Eliminar')), ], ), ))),
+          ]),
+          // Material / Notas tab
+          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Material y notas', style: Theme.of(context).textTheme.titleMedium), IconButton(icon: const Icon(Icons.add), onPressed: _agregarONota)]),
+            const SizedBox(height: AppSpacing.sm),
+            ..._notas.map((n) => Card(child: ListTile(title: Text(n.contenido), subtitle: Text(n.fecha.toLocal().toString()), trailing: PopupMenuButton<String>(onSelected: (v) async { if (v == 'eliminar') { final c = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(backgroundColor: AppColors.surface, title: const Text('Eliminar nota'), content: const Text('¿Querés borrar esta nota?'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar'))],)); if (c == true) { await (await _db.database).delete('notas', where: 'id = ?', whereArgs: [n.id]); _cargar(); } } }, itemBuilder: (_) => const [PopupMenuItem(value: 'eliminar', child: Text('Eliminar'))],),))),
+          ]),
+        ]),
       ),
     );
   }
