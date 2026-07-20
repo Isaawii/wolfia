@@ -34,12 +34,13 @@ class RootNav extends StatefulWidget {
 class _RootNavState extends State<RootNav> {
   int _index = 0;
 
-  final _pages = const [
-    DashboardScreen(),
-    RepertorioScreen(),
-    SesionScreen(),
-    DiarioScreen(),
-    DominioScreen(),
+final _pages = [
+      const DashboardScreen(),
+      const RepertorioScreen(tipo: 'obra'),
+      const RepertorioScreen(tipo: 'ejercicio'),
+      const SesionScreen(),
+      const DiarioScreen(),
+      const DominioScreen(),
   ];
 
   @override
@@ -52,6 +53,7 @@ class _RootNavState extends State<RootNav> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Inicio'),
           BottomNavigationBarItem(icon: Icon(Icons.library_music_rounded), label: 'Repertorio'),
+          BottomNavigationBarItem(icon: Icon(Icons.fitness_center_rounded), label: 'Ejercicio'),
           BottomNavigationBarItem(icon: Icon(Icons.timer_rounded), label: 'Sesión'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book_rounded), label: 'Diario'),
           BottomNavigationBarItem(icon: Icon(Icons.hub_rounded), label: 'Dominio'),
