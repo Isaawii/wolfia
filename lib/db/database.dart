@@ -21,7 +21,7 @@ class WolfiaDb {
     final path = join(dbPath, 'wolfia.db');
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE elementos (
@@ -30,7 +30,11 @@ class WolfiaDb {
             tipo TEXT NOT NULL,
             compositor TEXT,
             compases INTEGER,
-            categoria TEXT NOT NULL,
+            prioridad INTEGER NOT NULL DEFAULT 3,
+            tonalidad TEXT,
+            tempo TEXT,
+            duracion_aprox INTEGER,
+            anio INTEGER,
             estado TEXT NOT NULL,
             notas TEXT NOT NULL,
             creado_en TEXT NOT NULL
@@ -182,6 +186,40 @@ class WolfiaDb {
           await db
               .execute('ALTER TABLE tareas ADD COLUMN titulo_objetivo TEXT');
           await db.execute('ALTER TABLE tareas ADD COLUMN tipo_objetivo TEXT');
+        }
+
+        if (oldVersion < 8) {
+          // La columna 'categoria' de elementos era NOT NULL y ya no se usa.
+          // SQLite no permite alterar constraints in-place, así que se
+          // reconstruye la tabla completa preservando los datos existentes.
+          await db.execute('''
+    CREATE TABLE elementos_new (
+      id TEXT PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      tipo TEXT NOT NULL,
+      compositor TEXT,
+      compases INTEGER,
+      prioridad INTEGER NOT NULL DEFAULT 3,
+      tonalidad TEXT,
+      tempo TEXT,
+      duracion_aprox INTEGER,
+      anio INTEGER,
+      estado TEXT NOT NULL,
+      notas TEXT NOT NULL,
+      creado_en TEXT NOT NULL
+    );
+  ''');
+          await db.execute('''
+    INSERT INTO elementos_new
+      (id, nombre, tipo, compositor, compases, prioridad, tonalidad,
+       tempo, duracion_aprox, anio, estado, notas, creado_en)
+    SELECT
+      id, nombre, tipo, compositor, compases, 3, NULL,
+      NULL, NULL, NULL, estado, notas, creado_en
+    FROM elementos;
+  ''');
+          await db.execute('DROP TABLE elementos;');
+          await db.execute('ALTER TABLE elementos_new RENAME TO elementos;');
         }
       },
     );

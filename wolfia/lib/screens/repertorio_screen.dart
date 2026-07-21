@@ -73,22 +73,22 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                 if (tipo == 'obra')
                   TextField(
                     controller: compositorCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Compositor (opcional)'),
+                    decoration: const InputDecoration(labelText: 'Compositor'),
                   ),
                 if (tipo == 'obra') const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: compasesCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Compases totales (opcional)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Compases totales'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String?>(
-                  initialValue: categoriaCtrl.text.isEmpty ? null : categoriaCtrl.text,
-                  decoration: const InputDecoration(labelText: 'Categoría (opcional)'),
+                  initialValue:
+                      categoriaCtrl.text.isEmpty ? null : categoriaCtrl.text,
+                  decoration: const InputDecoration(labelText: 'Categoría'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('— ninguna —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguna')),
                     ..._categorias.map((c) => DropdownMenuItem(
                           value: c.nombre,
                           child: Text(c.nombre),
@@ -198,7 +198,8 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
 
   Future<void> _crearOEditarPreparacion(Elemento elemento,
       {Preparacion? existente}) async {
-    final nombreCtrl = TextEditingController(text: existente?.nombre ?? 'Preparación');
+    final nombreCtrl =
+        TextEditingController(text: existente?.nombre ?? 'Preparación');
     final objetivoCtrl =
         TextEditingController(text: existente?.objetivoPrincipal ?? '');
     final categoriaCtrl =
@@ -224,15 +225,16 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: objetivoCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Objetivo principal (opcional)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Objetivo principal'),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String?>(
-                  initialValue: categoriaCtrl.text.isEmpty ? null : categoriaCtrl.text,
-                  decoration: const InputDecoration(labelText: 'Categoría (opcional)'),
+                  initialValue:
+                      categoriaCtrl.text.isEmpty ? null : categoriaCtrl.text,
+                  decoration: const InputDecoration(labelText: 'Categoría'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('— ninguna —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguna')),
                     ..._categorias.map((c) => DropdownMenuItem(
                           value: c.nombre,
                           child: Text(c.nombre),
@@ -277,9 +279,8 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
         id: _uuid.v4(),
         elementoId: elemento.id,
         nombre: nombreCtrl.text.trim(),
-        objetivoPrincipal: objetivoCtrl.text.trim().isEmpty
-            ? null
-            : objetivoCtrl.text.trim(),
+        objetivoPrincipal:
+            objetivoCtrl.text.trim().isEmpty ? null : objetivoCtrl.text.trim(),
         categoria: categoriaCtrl.text.trim().isEmpty
             ? null
             : categoriaCtrl.text.trim(),
@@ -289,9 +290,8 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
       existente.nombre = nombreCtrl.text.trim();
       existente.objetivoPrincipal =
           objetivoCtrl.text.trim().isEmpty ? null : objetivoCtrl.text.trim();
-      existente.categoria = categoriaCtrl.text.trim().isEmpty
-          ? null
-          : categoriaCtrl.text.trim();
+      existente.categoria =
+          categoriaCtrl.text.trim().isEmpty ? null : categoriaCtrl.text.trim();
       await _db.updatePreparacion(existente);
     }
 
@@ -350,7 +350,8 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                                       '¿Querés borrar esta obra/ejercicio y todas sus preparaciones?'),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(ctx, false),
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
                                       child: const Text('Cancelar'),
                                     ),
                                     ElevatedButton(
@@ -367,8 +368,10 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                             _cargar();
                           },
                           itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'editar', child: Text('Editar')),
-                            PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                            PopupMenuItem(
+                                value: 'editar', child: Text('Editar')),
+                            PopupMenuItem(
+                                value: 'eliminar', child: Text('Eliminar')),
                           ],
                         ),
                       ],
@@ -410,11 +413,13 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                                           '¿Querés borrar esta preparación y todos sus detalles?'),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(ctx, false),
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
                                           child: const Text('Cancelar'),
                                         ),
                                         ElevatedButton(
-                                          onPressed: () => Navigator.pop(ctx, true),
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
                                           child: const Text('Eliminar'),
                                         ),
                                       ],
@@ -445,7 +450,8 @@ class _RepertorioScreenState extends State<RepertorioScreen> {
                           )),
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.add, color: AppColors.primary),
+                        leading:
+                            const Icon(Icons.add, color: AppColors.primary),
                         title: const Text('Nueva preparación'),
                         onTap: () => _crearOEditarPreparacion(elemento),
                       ),

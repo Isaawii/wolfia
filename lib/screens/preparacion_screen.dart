@@ -93,18 +93,16 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                 TextField(
                   controller: objetivoCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Objetivo principal (opcional)',
+                    labelText: 'Objetivo principal',
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String?>(
                   initialValue:
                       categoriaCtrl.text.isEmpty ? null : categoriaCtrl.text,
-                  decoration:
-                      const InputDecoration(labelText: 'Categoría (opcional)'),
+                  decoration: const InputDecoration(labelText: 'Categoría'),
                   items: [
-                    const DropdownMenuItem(
-                        value: null, child: Text('— ninguna —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguna')),
                     ..._categorias.map((c) => DropdownMenuItem(
                         value: c.nombre, child: Text(c.nombre)))
                   ],
@@ -150,11 +148,9 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 DropdownButtonFormField<String?>(
                   initialValue: profesorId,
-                  decoration:
-                      const InputDecoration(labelText: 'Profesor (opcional)'),
+                  decoration: const InputDecoration(labelText: 'Profesor'),
                   items: [
-                    const DropdownMenuItem(
-                        value: null, child: Text('— ninguno —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguno')),
                     ..._profesores.map((p) =>
                         DropdownMenuItem(value: p.id, child: Text(p.nombre)))
                   ],
@@ -163,15 +159,15 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: tempoActualCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Tempo actual (bpm) (opcional)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Tempo actual (bpm)'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: tempoObjetivoCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Tempo objetivo (bpm) (opcional)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Tempo objetivo (bpm)'),
                   keyboardType: TextInputType.number,
                 ),
               ],

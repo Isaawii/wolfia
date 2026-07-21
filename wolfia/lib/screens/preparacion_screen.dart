@@ -103,8 +103,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   decoration:
                       const InputDecoration(labelText: 'Categoría (opcional)'),
                   items: [
-                    const DropdownMenuItem(
-                        value: null, child: Text('— ninguna —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguna')),
                     ..._categorias.map((c) => DropdownMenuItem(
                         value: c.nombre, child: Text(c.nombre)))
                   ],
@@ -153,8 +152,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                   decoration:
                       const InputDecoration(labelText: 'Profesor (opcional)'),
                   items: [
-                    const DropdownMenuItem(
-                        value: null, child: Text('— ninguno —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguno')),
                     ..._profesores.map((p) =>
                         DropdownMenuItem(value: p.id, child: Text(p.nombre)))
                   ],
@@ -1010,8 +1008,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                                 value: o.estado == 'cumplido',
                                 onChanged: (_) => _toggleObjetivo(o)),
                             title: Text(o.descripcion),
-                            subtitle: Text(
-                                _subtituloObjetivo(o)),
+                            subtitle: Text(_subtituloObjetivo(o)),
                             trailing: PopupMenuButton<String>(
                               onSelected: (v) async {
                                 if (v == 'editar') {
@@ -1051,8 +1048,8 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Builder(builder: (ctx) {
-                      final problemasDelSegmento = _problemas
-                          .where((p) => p.segmentoId == s.id);
+                      final problemasDelSegmento =
+                          _problemas.where((p) => p.segmentoId == s.id);
                       if (problemasDelSegmento.isEmpty)
                         return const SizedBox.shrink();
                       return Column(
@@ -1149,8 +1146,7 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                           decoration: o.estado == 'cumplido'
                               ? TextDecoration.lineThrough
                               : null)),
-                  subtitle:
-                      Text(_subtituloObjetivo(o)),
+                  subtitle: Text(_subtituloObjetivo(o)),
                   activeColor: AppColors.primary,
                   secondary: PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),

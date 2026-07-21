@@ -177,11 +177,9 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                 ),
                 DropdownButtonFormField<String?>(
                   initialValue: preparacionId,
-                  decoration: const InputDecoration(
-                      labelText: 'Preparación (opcional)'),
+                  decoration: const InputDecoration(labelText: 'Preparación'),
                   items: [
-                    const DropdownMenuItem(
-                        value: null, child: Text('— ninguna —')),
+                    const DropdownMenuItem(value: null, child: Text('Ninguna')),
                     ..._preparaciones.map((p) =>
                         DropdownMenuItem(value: p.id, child: Text(p.nombre))),
                   ],
@@ -190,14 +188,14 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                 const SizedBox(height: AppSpacing.sm),
                 TextField(
                   controller: solCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Soluciones probadas (opcional)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Soluciones probadas'),
                   maxLines: 2,
                 ),
                 TextField(
                   controller: ejCtrl,
                   decoration: const InputDecoration(
-                      labelText: 'Ejercicios relacionados (opcional)'),
+                      labelText: 'Ejercicios relacionados'),
                   maxLines: 2,
                 ),
               ],
@@ -339,8 +337,7 @@ class _CapacidadesTabState extends State<_CapacidadesTab> {
                       labelText: 'Nombre (ej: Lectura a primera vista)')),
               TextField(
                   controller: descCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Descripción (opcional)'),
+                  decoration: const InputDecoration(labelText: 'Descripción'),
                   maxLines: 2),
               const SizedBox(height: AppSpacing.sm),
               Text('Progreso: ${progreso.round()}%'),
@@ -354,8 +351,7 @@ class _CapacidadesTabState extends State<_CapacidadesTab> {
               ),
               TextField(
                   controller: notasCtrl,
-                  decoration:
-                      const InputDecoration(labelText: 'Notas (opcional)'),
+                  decoration: const InputDecoration(labelText: 'Notas'),
                   maxLines: 2),
             ],
           ),
@@ -632,12 +628,10 @@ class _ProfesoresTabState extends State<_ProfesoresTab> {
                 decoration: const InputDecoration(labelText: 'Nombre')),
             TextField(
                 controller: contactoCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Contacto (opcional)')),
+                decoration: const InputDecoration(labelText: 'Contacto')),
             TextField(
                 controller: notasCtrl,
-                decoration:
-                    const InputDecoration(labelText: 'Notas (opcional)'),
+                decoration: const InputDecoration(labelText: 'Notas'),
                 maxLines: 2),
           ],
         ),

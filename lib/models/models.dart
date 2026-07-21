@@ -1,16 +1,17 @@
 /// Modelos de dominio de Wolfia.
-/// Simplificación deliberada del SDD original: un pianista usando esto
-/// solo no necesita event sourcing, CQRS ni sync multi-dispositivo.
-/// Sí conservamos la idea central: Elemento -> Preparación -> Segmento ->
-/// Objetivo, y la Sesión como unidad que ejecuta Tareas.
 
+//Un elemento puede ser una obra o un ejercicio. Constituye el marco sobre el que se definen segmentos y objetivos de estudio.
 class Elemento {
   final String id;
   String nombre;
   String tipo; // 'obra' | 'ejercicio'
   String? compositor;
   int? compases;
-  String categoria;
+  int prioridad; // 1-5
+  String? tonalidad;
+  String? tempo; // texto libre: "Negra = 120", "3+2+3/8 = 96", etc.
+  int? duracionAprox; // minutos
+  int? anio;
   String estado; // pendiente/leyendo/estudiando/consolidando/lista/archivada
   String notas;
   DateTime creadoEn;
@@ -21,7 +22,11 @@ class Elemento {
     required this.tipo,
     this.compositor,
     this.compases,
-    this.categoria = 'General',
+    this.prioridad = 3,
+    this.tonalidad,
+    this.tempo,
+    this.duracionAprox,
+    this.anio,
     this.estado = 'pendiente',
     this.notas = '',
     DateTime? creadoEn,
@@ -32,8 +37,12 @@ class Elemento {
         'nombre': nombre,
         'tipo': tipo,
         'compositor': compositor,
-        'categoria': categoria,
         'compases': compases,
+        'prioridad': prioridad,
+        'tonalidad': tonalidad,
+        'tempo': tempo,
+        'duracion_aprox': duracionAprox,
+        'anio': anio,
         'estado': estado,
         'notas': notas,
         'creado_en': creadoEn.toIso8601String(),
@@ -45,7 +54,11 @@ class Elemento {
         tipo: m['tipo'] as String,
         compositor: m['compositor'] as String?,
         compases: m['compases'] as int?,
-        categoria: m['categoria'] as String? ?? 'General',
+        prioridad: m['prioridad'] as int? ?? 3,
+        tonalidad: m['tonalidad'] as String?,
+        tempo: m['tempo'] as String?,
+        duracionAprox: m['duracion_aprox'] as int?,
+        anio: m['anio'] as int?,
         estado: m['estado'] as String? ?? 'pendiente',
         notas: m['notas'] as String? ?? '',
         creadoEn: DateTime.parse(m['creado_en'] as String),
