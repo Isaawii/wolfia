@@ -4,6 +4,64 @@ import '../db/database.dart';
 import '../models/models.dart';
 import '../theme.dart';
 
+/// Color semántico por estado (preparación u objetivo cumplido/pendiente).
+Color _estadoColor(String estado) {
+  switch (estado) {
+    case 'pendiente':
+      return AppColors.textSecondary;
+    case 'leyendo':
+      return AppColors.info;
+    case 'estudiando':
+      return AppColors.primary;
+    case 'consolidando':
+      return AppColors.warning;
+    case 'lista':
+    case 'finalizada':
+    case 'cumplido':
+      return AppColors.success;
+    default:
+      return AppColors.textSecondary;
+  }
+}
+
+IconData _estadoIcon(String estado) {
+  switch (estado) {
+    case 'pendiente':
+      return Icons.schedule;
+    case 'leyendo':
+      return Icons.menu_book;
+    case 'estudiando':
+      return Icons.fitness_center;
+    case 'consolidando':
+      return Icons.tune;
+    case 'lista':
+      return Icons.check_circle_outline;
+    case 'finalizada':
+    case 'cumplido':
+      return Icons.check_circle;
+    default:
+      return Icons.circle;
+  }
+}
+
+String _formatFecha(DateTime d) {
+  const meses = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  return '${d.day} ${meses[d.month - 1]} ${d.year}';
+}
+
 class PreparacionScreen extends StatefulWidget {
   final String preparacionId;
   const PreparacionScreen({super.key, required this.preparacionId});
@@ -555,13 +613,13 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
   Color _colorForPrioridad(int prioridad) {
     switch (prioridad) {
       case 1:
-        return Colors.blueGrey;
+        return AppColors.textSecondary;
       case 2:
         return AppColors.success;
       case 3:
         return AppColors.warning;
       case 4:
-        return Colors.deepOrange;
+        return Color.lerp(AppColors.warning, AppColors.error, 0.6)!;
       case 5:
         return AppColors.error;
       default:
@@ -773,183 +831,295 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
     _cargar();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_cargando) return const Center(child: CircularProgressIndicator());
-    final prep = _prep!;
+  // ---------------------------------------------------------------------
+  // Construcción de cada pestaña (separado del build() para mayor claridad)
+  // ---------------------------------------------------------------------
 
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(prep.nombre),
-          actions: [
-            IconButton(
-              icon: Icon(prep.activa ? Icons.pause : Icons.play_arrow),
-              tooltip: prep.activa ? 'Archivar' : 'Activar',
-              onPressed: _toggleActiva,
+  Widget _buildGeneralTab(Preparacion prep) {
+    final profesorNombre = _profesores
+        .firstWhere((p) => p.id == prep.profesorId,
+            orElse: () => Profesor(id: '', nombre: '—'))
+        .nombre;
+    final tempoTexto = (prep.tempoActual != null || prep.tempoObjetivo != null)
+        ? '${prep.tempoActual ?? '—'} → ${prep.tempoObjetivo ?? '—'} bpm'
+        : '—';
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        if (prep.objetivoPrincipal != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
             ),
-            IconButton(
-                icon: const Icon(Icons.edit),
-                tooltip: 'Editar preparación',
-                onPressed: _editarPreparacion),
-            IconButton(
-                icon: const Icon(Icons.delete_outline),
-                tooltip: 'Eliminar preparación',
-                onPressed: _eliminarPreparacion),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.flag, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'OBJETIVO PRINCIPAL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  prep.objetivoPrincipal!,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.text,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _EstadoChip(prep.estado),
+            if (prep.categoria != null)
+              _InfoChip(icon: Icons.calendar_view_week, label: prep.categoria!),
+            _PrioridadDots(prep.prioridad),
+            if (prep.fechaObjetivo != null) _DeadlineChip(prep.fechaObjetivo!),
           ],
-          bottom: const TabBar(tabs: [
-            Tab(text: 'General'),
-            Tab(text: 'Segmentos'),
-            Tab(text: 'Objetivos'),
-            Tab(text: 'Material')
-          ]),
         ),
-        body: TabBarView(children: [
-          // General tab
-          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
-            if (prep.objetivoPrincipal != null) ...[
-              Text('Objetivo principal',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: AppSpacing.xs),
-              Text(prep.objetivoPrincipal!,
-                  style: const TextStyle(color: AppColors.primary)),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-            Text('Estado: ${prep.estado}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-                'Fecha inicio: ${prep.creadoEn.toLocal().toString().split(' ').first}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-                'Fecha límite: ${prep.fechaObjetivo != null ? prep.fechaObjetivo!.toLocal().toString().split(' ').first : '—'}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Prioridad: ${prep.prioridad}/5'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Puntos acumulados: ${prep.puntos}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Tiempo invertido: ${prep.tiempoInvertido} min'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Tempo actual: ${prep.tempoActual ?? '—'}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Tempo objetivo: ${prep.tempoObjetivo ?? '—'}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Sesiones involucradas: ${prep.sesionesCount}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text('Categoría: ${prep.categoria ?? '—'}'),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-                'Profesor: ${_profesores.firstWhere((p) => p.id == prep.profesorId, orElse: () => Profesor(id: '', nombre: '—')).nombre}'),
-          ]),
-          // Segmentos tab
-          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Segmentos', style: Theme.of(context).textTheme.titleMedium),
-              IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _agregarOEditarSegmento())
-            ]),
-            if (_elemento != null && _elemento!.compases != null)
-              Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                  child: _buildDiagrama()),
-            ..._segmentos.map((s) {
-              final objetivosDelSegmento =
-                  _objetivos.where((o) => o.segmentoId == s.id);
-              return Card(
-                child: ExpansionTile(
-                  title: Text(s.nombre),
-                  subtitle: Column(
+        const SizedBox(height: AppSpacing.lg),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 2.3,
+          children: [
+            _StatTile(
+              icon: Icons.star_outline,
+              label: 'Puntos acumulados',
+              value: '${prep.puntos}',
+            ),
+            _StatTile(
+              icon: Icons.timer_outlined,
+              label: 'Tiempo invertido',
+              value: '${prep.tiempoInvertido} min',
+            ),
+            _StatTile(
+              icon: Icons.event_repeat,
+              label: 'Sesiones',
+              value: '${prep.sesionesCount}',
+            ),
+            _StatTile(
+              icon: Icons.speed,
+              label: 'Tempo actual → objetivo',
+              value: tempoTexto,
+            ),
+            _StatTile(
+              icon: Icons.calendar_today_outlined,
+              label: 'Fecha inicio',
+              value: _formatFecha(prep.creadoEn),
+            ),
+            _StatTile(
+              icon: Icons.person_outline,
+              label: 'Profesor',
+              value: profesorNombre,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSegmentosTab() {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        _SectionHeader(
+          icon: Icons.view_agenda_outlined,
+          titulo: 'Segmentos',
+          onAdd: () => _agregarOEditarSegmento(),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (_elemento != null && _elemento!.compases != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: _buildDiagrama(),
+          ),
+        ..._segmentos.map((s) {
+          final objetivosDelSegmento =
+              _objetivos.where((o) => o.segmentoId == s.id);
+          return Card(
+            child: ExpansionTile(
+              title: Text(s.nombre),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _PrioridadDots(s.prioridad),
+                    _RecenciaChip(dias: s.diasSinPracticar()),
+                    if (s.compasInicio != null || s.compasFin != null)
+                      _InfoChip(
+                        icon: Icons.straighten,
+                        label: '${s.compasInicio ?? '?'}-${s.compasFin ?? '?'}',
+                      ),
+                    if (s.tempoActual != null || s.tempoObjetivo != null)
+                      _InfoChip(
+                        icon: Icons.speed,
+                        label:
+                            '${s.tempoActual ?? '—'} → ${s.tempoObjetivo ?? '—'} bpm',
+                      ),
+                  ],
+                ),
+              ),
+              trailing: PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) async {
+                  if (value == 'editar') {
+                    await _agregarOEditarSegmento(segmento: s);
+                  } else if (value == 'eliminar') {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: AppColors.surface,
+                        title: const Text('Eliminar segmento'),
+                        content: const Text('¿Querés borrar este segmento?'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancelar')),
+                          ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Eliminar')),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await _db.deleteSegmento(s.id);
+                      _cargar();
+                    }
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'editar', child: Text('Editar')),
+                  PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                ],
+              ),
+              children: [
+                if (objetivosDelSegmento.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    child: Text('Sin objetivos en este segmento',
+                        style: TextStyle(color: AppColors.textSecondary)),
+                  )
+                else
+                  ...objetivosDelSegmento.map((o) => _ObjetivoTile(
+                        objetivo: o,
+                        onToggle: () => _toggleObjetivo(o),
+                        onEditar: () => _editarObjetivo(o),
+                        onMinutos: () => _addMinutesToObjetivo(o),
+                        onEliminar: () => _eliminarObjetivo(o),
+                      )),
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                        onPressed: () => _agregarObjetivoEnSegmento(s),
+                        child: const Text('Agregar objetivo')),
+                    const SizedBox(width: AppSpacing.sm),
+                    TextButton(
+                        onPressed: () => _asignarProblemaASegmento(s),
+                        child: const Text('Asignar problema')),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Builder(builder: (ctx) {
+                  final problemasDelSegmento =
+                      _problemas.where((p) => p.segmentoId == s.id);
+                  if (problemasDelSegmento.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                          'Prioridad ${s.prioridad}/5 · ${s.diasSinPracticar() >= 999 ? 'sin practicar' : 'hace ${s.diasSinPracticar()} días'}'),
-                      if (s.compasInicio != null || s.compasFin != null)
-                        Text(
-                            'Compases: ${s.compasInicio ?? '?'} - ${s.compasFin ?? '?'}'),
-                      if (s.tempoActual != null || s.tempoObjetivo != null)
-                        Text(
-                            'Tempo: actual ${s.tempoActual ?? '—'} · objetivo ${s.tempoObjetivo ?? '—'}'),
-                    ],
-                  ),
-                  children: [
-                    if (objetivosDelSegmento.isEmpty)
-                      const ListTile(
-                          title: Text('Sin objetivos en este segmento'))
-                    else
-                      ...objetivosDelSegmento.map((o) => ListTile(
-                            leading: Checkbox(
-                                value: o.estado == 'cumplido',
-                                onChanged: (_) => _toggleObjetivo(o)),
-                            title: Text(o.descripcion),
-                            subtitle: Text(
-                                'Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (v) async {
-                                if (v == 'editar') {
-                                  await _editarObjetivo(o);
-                                }
-                                if (v == 'minutos') {
-                                  await _addMinutesToObjetivo(o);
-                                }
-                                if (v == 'eliminar') {
-                                  await _eliminarObjetivo(o);
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                    value: 'editar', child: Text('Editar')),
-                                PopupMenuItem(
-                                    value: 'minutos',
-                                    child: Text('Agregar minutos')),
-                                PopupMenuItem(
-                                    value: 'eliminar', child: Text('Eliminar')),
-                              ],
+                      const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                        child: Text('Problemas asociados',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      ...problemasDelSegmento.map((p) => Container(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 4, horizontal: AppSpacing.md),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface2,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          )),
-                    const Divider(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                            onPressed: () => _agregarObjetivoEnSegmento(s),
-                            child: const Text('Agregar objetivo')),
-                        const SizedBox(width: AppSpacing.sm),
-                        TextButton(
-                            onPressed: () => _asignarProblemaASegmento(s),
-                            child: const Text('Asignar problema')),
-                        const SizedBox(width: AppSpacing.sm),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Builder(builder: (ctx) {
-                      final problemasDelSegmento =
-                          _problemas.where((p) => p.segmentoId == s.id);
-                      if (problemasDelSegmento.isEmpty)
-                        return const SizedBox.shrink();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                            child: Text('Problemas asociados',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          ...problemasDelSegmento.map((p) => ListTile(
-                                title: Text(p.descripcion),
-                                subtitle: Text(
-                                    'Intensidad: ${p.intensidad} · Estado: ${p.estado}'),
-                                trailing: PopupMenuButton<String>(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.descripcion,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.text,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          _InfoChip(
+                                            icon: Icons.warning_amber,
+                                            label: 'Intensidad ${p.intensidad}',
+                                            color: AppColors.warning,
+                                          ),
+                                          _InfoChip(
+                                            icon: Icons.info_outline,
+                                            label: p.estado,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, size: 20),
                                   onSelected: (v) async {
                                     if (v == 'desasignar') {
                                       p.segmentoId = null;
                                       await _db.updateProblema(p);
                                       _cargar();
                                     } else if (v == 'editar') {
-                                      // open dominio edit flow
-                                      // For simplicity reuse Dominio screen flow: open dominio to edit
                                       Navigator.pushNamed(context, '/dominio');
                                     }
                                   },
@@ -962,101 +1132,81 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                                         child: Text('Desasignar')),
                                   ],
                                 ),
-                              ))
-                        ],
-                      );
-                    })
-                  ],
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) async {
-                      if (value == 'editar') {
-                        await _agregarOEditarSegmento(segmento: s);
-                      } else if (value == 'eliminar') {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: AppColors.surface,
-                            title: const Text('Eliminar segmento'),
-                            content:
-                                const Text('¿Querés borrar este segmento?'),
-                            actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Cancelar')),
-                              ElevatedButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Eliminar')),
-                            ],
-                          ),
-                        );
-                        if (confirm == true) {
-                          await _db.deleteSegmento(s.id);
-                          _cargar();
-                        }
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'editar', child: Text('Editar')),
-                      PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                              ],
+                            ),
+                          )),
                     ],
+                  );
+                }),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildObjetivosTab() {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        _SectionHeader(
+          icon: Icons.flag_outlined,
+          titulo: 'Objetivos',
+          onAdd: _agregarObjetivo,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        ..._objetivos.map((o) => _ObjetivoTile(
+              objetivo: o,
+              onToggle: () => _toggleObjetivo(o),
+              onEditar: () => _editarObjetivo(o),
+              onMinutos: () => _addMinutesToObjetivo(o),
+              onEliminar: () => _eliminarObjetivo(o),
+            )),
+      ],
+    );
+  }
+
+  Widget _buildMaterialTab() {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        _SectionHeader(
+          icon: Icons.sticky_note_2_outlined,
+          titulo: 'Material y notas',
+          onAdd: _agregarONota,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        ..._notas.map((n) => Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.surface2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.sticky_note_2_outlined,
+                      size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(n.contenido,
+                            style: const TextStyle(color: AppColors.text)),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatFecha(n.fecha),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
-          ]),
-          // Objetivos tab
-          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Objetivos', style: Theme.of(context).textTheme.titleMedium),
-              IconButton(
-                  icon: const Icon(Icons.add), onPressed: _agregarObjetivo)
-            ]),
-            ..._objetivos.map((o) => Card(
-                    child: CheckboxListTile(
-                  value: o.estado == 'cumplido',
-                  onChanged: (_) => _toggleObjetivo(o),
-                  title: Text(o.descripcion,
-                      style: TextStyle(
-                          decoration: o.estado == 'cumplido'
-                              ? TextDecoration.lineThrough
-                              : null)),
-                  subtitle:
-                      Text('Puntos: ${o.puntos} · ${o.puntosPorMinuto}/min'),
-                  activeColor: AppColors.primary,
-                  secondary: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (v) async {
-                      if (v == 'editar') {
-                        await _editarObjetivo(o);
-                      } else if (v == 'minutos') {
-                        await _addMinutesToObjetivo(o);
-                      } else if (v == 'eliminar') {
-                        await _eliminarObjetivo(o);
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'editar', child: Text('Editar')),
-                      PopupMenuItem(
-                          value: 'minutos', child: Text('Agregar minutos')),
-                      PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
-                    ],
-                  ),
-                ))),
-          ]),
-          // Material / Notas tab
-          ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Material y notas',
-                  style: Theme.of(context).textTheme.titleMedium),
-              IconButton(icon: const Icon(Icons.add), onPressed: _agregarONota)
-            ]),
-            const SizedBox(height: AppSpacing.sm),
-            ..._notas.map((n) => Card(
-                    child: ListTile(
-                  title: Text(n.contenido),
-                  subtitle: Text(n.fecha.toLocal().toString()),
-                  trailing: PopupMenuButton<String>(
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20),
                     onSelected: (v) async {
                       if (v == 'eliminar') {
                         final c = await showDialog<bool>(
@@ -1088,9 +1238,465 @@ class _PreparacionScreenState extends State<PreparacionScreen> {
                       PopupMenuItem(value: 'eliminar', child: Text('Eliminar'))
                     ],
                   ),
-                ))),
+                ],
+              ),
+            )),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cargando) return const Center(child: CircularProgressIndicator());
+    final prep = _prep!;
+
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(prep.nombre),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+              child: _ActivaToggle(activa: prep.activa, onTap: _toggleActiva),
+            ),
+            IconButton(
+                icon: const Icon(Icons.edit),
+                tooltip: 'Editar preparación',
+                onPressed: _editarPreparacion),
+            IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Eliminar preparación',
+                onPressed: _eliminarPreparacion),
+          ],
+          bottom: const TabBar(tabs: [
+            Tab(icon: Icon(Icons.dashboard_outlined), text: 'General'),
+            Tab(icon: Icon(Icons.view_agenda_outlined), text: 'Segmentos'),
+            Tab(icon: Icon(Icons.flag_outlined), text: 'Objetivos'),
+            Tab(icon: Icon(Icons.sticky_note_2_outlined), text: 'Material'),
           ]),
+        ),
+        body: TabBarView(children: [
+          _buildGeneralTab(prep),
+          _buildSegmentosTab(),
+          _buildObjetivosTab(),
+          _buildMaterialTab(),
         ]),
+      ),
+    );
+  }
+}
+
+/// Pill tappable que reemplaza el antiguo ícono play/pause: dice
+/// explícitamente "Activa" o "Pausada" y se puede tocar para alternar.
+class _ActivaToggle extends StatelessWidget {
+  final bool activa;
+  final VoidCallback onTap;
+  const _ActivaToggle({required this.activa, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = activa ? AppColors.primary : AppColors.textSecondary;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              activa ? 'Activa' : 'Pausada',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Encabezado de sección reutilizable: ícono + título + botón de agregar.
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String titulo;
+  final VoidCallback onAdd;
+  const _SectionHeader({
+    required this.icon,
+    required this.titulo,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(titulo, style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+        IconButton(
+          icon: const Icon(Icons.add_circle_outline),
+          color: AppColors.primary,
+          onPressed: onAdd,
+        ),
+      ],
+    );
+  }
+}
+
+/// Tarjeta chica de estadística para la grilla de la pestaña General.
+class _StatTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _StatTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.text,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge de estado con ícono y color semántico (preparación u objetivo).
+class _EstadoChip extends StatelessWidget {
+  final String estado;
+  const _EstadoChip(this.estado);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _estadoColor(estado);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_estadoIcon(estado), size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            estado,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip genérico neutro para mostrar un dato con ícono (categoría, tempo, etc).
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    this.color = AppColors.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 11, color: color, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Indicador de prioridad (1 a 5) con puntitos.
+class _PrioridadDots extends StatelessWidget {
+  final int prioridad;
+  const _PrioridadDots(this.prioridad);
+
+  Color get _color {
+    if (prioridad >= 4) return AppColors.warning;
+    if (prioridad == 3) return AppColors.primary;
+    return AppColors.textSecondary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        final lleno = i < prioridad;
+        return Padding(
+          padding: const EdgeInsets.only(right: 2),
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: lleno ? color : AppColors.border,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+/// Chip de fecha límite, coloreado según urgencia.
+class _DeadlineChip extends StatelessWidget {
+  final DateTime fecha;
+  const _DeadlineChip(this.fecha);
+
+  @override
+  Widget build(BuildContext context) {
+    final hoy = DateTime.now();
+    final hoySinHora = DateTime(hoy.year, hoy.month, hoy.day);
+    final dias = fecha.difference(hoySinHora).inDays;
+
+    Color color;
+    String texto;
+    if (dias < 0) {
+      color = AppColors.error;
+      texto = 'Vencida';
+    } else if (dias == 0) {
+      color = AppColors.error;
+      texto = 'Hoy';
+    } else if (dias <= 7) {
+      color = AppColors.warning;
+      texto = 'En $dias d';
+    } else {
+      color = AppColors.textSecondary;
+      texto = _formatFecha(fecha);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            texto,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip de recencia ("hace N días" / "sin practicar"), coloreado según
+/// cuánto hace que no se practica ese segmento.
+class _RecenciaChip extends StatelessWidget {
+  final int dias;
+  const _RecenciaChip({required this.dias});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String texto;
+    if (dias >= 999) {
+      color = AppColors.error;
+      texto = 'Sin practicar';
+    } else if (dias == 0) {
+      color = AppColors.success;
+      texto = 'Hoy';
+    } else if (dias <= 3) {
+      color = AppColors.success;
+      texto = 'Hace $dias d';
+    } else if (dias <= 14) {
+      color = AppColors.warning;
+      texto = 'Hace $dias d';
+    } else {
+      color = AppColors.error;
+      texto = 'Hace $dias d';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.history, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            texto,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fila de objetivo reutilizada tanto dentro de un segmento como en la
+/// pestaña general de Objetivos, para que ambos luzcan consistentes.
+class _ObjetivoTile extends StatelessWidget {
+  final Objetivo objetivo;
+  final VoidCallback onToggle;
+  final VoidCallback onEditar;
+  final VoidCallback onMinutos;
+  final VoidCallback onEliminar;
+
+  const _ObjetivoTile({
+    required this.objetivo,
+    required this.onToggle,
+    required this.onEditar,
+    required this.onMinutos,
+    required this.onEliminar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final o = objetivo;
+    final cumplido = o.estado == 'cumplido';
+    return Container(
+      margin:
+          const EdgeInsets.symmetric(vertical: 4, horizontal: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: cumplido,
+            onChanged: (_) => onToggle(),
+            activeColor: AppColors.success,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  o.descripcion,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.text,
+                    decoration: cumplido ? TextDecoration.lineThrough : null,
+                    decorationColor: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _InfoChip(
+                        icon: Icons.star_outline, label: '${o.puntos} pts'),
+                    _InfoChip(
+                        icon: Icons.speed, label: '${o.puntosPorMinuto}/min'),
+                    _InfoChip(
+                      icon: Icons.timer_outlined,
+                      label: '${o.tiempoMinimo}-${o.tiempoMaximo} min',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, size: 20),
+            onSelected: (v) {
+              if (v == 'editar') onEditar();
+              if (v == 'minutos') onMinutos();
+              if (v == 'eliminar') onEliminar();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'editar', child: Text('Editar')),
+              PopupMenuItem(value: 'minutos', child: Text('Agregar minutos')),
+              PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -5,7 +5,7 @@ import '../models/models.dart';
 import '../theme.dart';
 
 /// Fase A del plan de auditoría: pantalla que agrupa las entidades de
-/// dominio nuevas (Problema, Patrón, Capacidad, Categoría, Profesor) en
+/// dominio nuevas (Problema, Capacidad, Categoría, Profesor) en
 /// un único hub con pestañas, con CRUD básico sobre SQLite.
 /// Todavía no están conectadas al generador de sesiones (eso es Fase C).
 class DominioScreen extends StatefulWidget {
@@ -91,6 +91,67 @@ Color _colorIntensidad(String i) {
   }
 }
 
+IconData _iconoIntensidad(String i) {
+  switch (i) {
+    case 'critica':
+      return Icons.warning_amber_rounded;
+    case 'alta':
+      return Icons.priority_high;
+    case 'media':
+      return Icons.info_outline;
+    default:
+      return Icons.check_circle_outline;
+  }
+}
+
+Color _colorEstadoProblema(String e) {
+  switch (e) {
+    case 'activo':
+      return AppColors.warning;
+    case 'en_progreso':
+      return AppColors.info;
+    case 'resuelto':
+      return AppColors.success;
+    default:
+      return AppColors.textSecondary;
+  }
+}
+
+IconData _iconoEstadoProblema(String e) {
+  switch (e) {
+    case 'activo':
+      return Icons.schedule;
+    case 'en_progreso':
+      return Icons.autorenew;
+    case 'resuelto':
+      return Icons.check_circle;
+    default:
+      return Icons.circle;
+  }
+}
+
+Color _colorEstadoRecomendacion(String e) {
+  switch (e) {
+    case 'aplicada':
+      return AppColors.success;
+    case 'descartada':
+      return AppColors.textSecondary;
+    default:
+      return AppColors.warning;
+  }
+}
+
+IconData _iconoEstadoRecomendacion(String e) {
+  switch (e) {
+    case 'aplicada':
+      return Icons.check_circle;
+    case 'descartada':
+      return Icons.block;
+    default:
+      return Icons.schedule;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Problemas
 // ---------------------------------------------------------------------------
@@ -162,17 +223,39 @@ class _ProblemasTabState extends State<_ProblemasTab> {
                 DropdownButtonFormField<String>(
                   initialValue: intensidad,
                   decoration: const InputDecoration(labelText: 'Intensidad'),
-                  items: _intensidades
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
+                  items: _intensidades.map((c) {
+                    return DropdownMenuItem(
+                      value: c,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_iconoIntensidad(c),
+                              size: 16, color: _colorIntensidad(c)),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(c),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                   onChanged: (v) => setStateDialog(() => intensidad = v!),
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: estado,
                   decoration: const InputDecoration(labelText: 'Estado'),
-                  items: _estadosProblema
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
+                  items: _estadosProblema.map((c) {
+                    return DropdownMenuItem(
+                      value: c,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_iconoEstadoProblema(c),
+                              size: 16, color: _colorEstadoProblema(c)),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(c),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                   onChanged: (v) => setStateDialog(() => estado = v!),
                 ),
                 DropdownButtonFormField<String?>(
@@ -239,9 +322,36 @@ class _ProblemasTabState extends State<_ProblemasTab> {
     }
   }
 
+  Future<void> _eliminar(Problema p) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Eliminar problema'),
+        content: const Text('¿Querés borrar este problema?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Eliminar')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await _db.deleteProblema(p.id);
+      _cargar();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
+
+    final activos = _items.where((p) => p.estado == 'activo').length;
+    final criticos = _items.where((p) => p.intensidad == 'critica').length;
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _crearOEditar(),
@@ -251,38 +361,122 @@ class _ProblemasTabState extends State<_ProblemasTab> {
           ? const _EmptyHint(
               texto:
                   'Todavía no registraste ningún problema técnico o musical.')
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: _items.length,
-              itemBuilder: (ctx, i) {
-                final p = _items[i];
-                return Card(
-                  child: ListTile(
-                    onTap: () => _crearOEditar(existente: p),
-                    leading: CircleAvatar(
-                      backgroundColor: _colorIntensidad(p.intensidad),
-                      child: Text(p.intensidad[0].toUpperCase(),
-                          style: const TextStyle(color: Colors.black)),
-                    ),
-                    title: Text(p.descripcion),
-                    subtitle: Text('${p.categoria} · ${p.estado}'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: AppColors.textSecondary),
-                      onPressed: () async {
-                        await _db.deleteProblema(p.id);
-                        _cargar();
-                      },
-                    ),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.report_problem_outlined,
+                          value: '${_items.length}',
+                          label: 'Problemas',
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.schedule,
+                          value: '$activos',
+                          label: 'Activos',
+                          color: AppColors.warning,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.warning_amber_rounded,
+                          value: '$criticos',
+                          label: 'Críticos',
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    itemCount: _items.length,
+                    itemBuilder: (ctx, i) {
+                      final p = _items[i];
+                      final color = _colorIntensidad(p.intensidad);
+                      return Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _crearOEditar(existente: p),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.sm),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: color.withOpacity(0.15),
+                                  child: Icon(_iconoIntensidad(p.intensidad),
+                                      color: color, size: 20),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.descripcion,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.text),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          _EstadoProblemaBadge(p.estado),
+                                          _IntensidadBadge(p.intensidad),
+                                          _CategoriaProblemaChip(p.categoria),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert),
+                                  onSelected: (value) {
+                                    if (value == 'editar') {
+                                      _crearOEditar(existente: p);
+                                    } else if (value == 'eliminar') {
+                                      _eliminar(p);
+                                    }
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                        value: 'editar', child: Text('Editar')),
+                                    PopupMenuItem(
+                                        value: 'eliminar',
+                                        child: Text('Eliminar')),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
 }
-
-// Patrones tab removed.
 
 // ---------------------------------------------------------------------------
 // Capacidades
@@ -387,9 +581,21 @@ class _CapacidadesTabState extends State<_CapacidadesTab> {
     }
   }
 
+  Color _colorProgreso(int progreso) {
+    if (progreso >= 75) return AppColors.success;
+    if (progreso >= 40) return AppColors.primary;
+    return AppColors.warning;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
+
+    final promedio = _items.isEmpty
+        ? 0
+        : (_items.fold<int>(0, (a, c) => a + c.progreso) / _items.length)
+            .round();
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _crearOEditar(),
@@ -398,25 +604,101 @@ class _CapacidadesTabState extends State<_CapacidadesTab> {
       body: _items.isEmpty
           ? const _EmptyHint(
               texto: 'Todavía no registraste ninguna capacidad en desarrollo.')
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: _items.length,
-              itemBuilder: (ctx, i) {
-                final c = _items[i];
-                return Card(
-                  child: ListTile(
-                    onTap: () => _crearOEditar(existente: c),
-                    title: Text(c.nombre),
-                    subtitle: LinearProgressIndicator(
-                      value: c.progreso / 100,
-                      backgroundColor: AppColors.surface2,
-                      color: AppColors.primary,
-                    ),
-                    trailing: Text('${c.progreso}%',
-                        style: const TextStyle(color: AppColors.primary)),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.auto_awesome_outlined,
+                          value: '${_items.length}',
+                          label: 'Capacidades',
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.trending_up,
+                          value: '$promedio%',
+                          label: 'Progreso prom.',
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    itemCount: _items.length,
+                    itemBuilder: (ctx, i) {
+                      final c = _items[i];
+                      final color = _colorProgreso(c.progreso);
+                      return Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _crearOEditar(existente: c),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.sm),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        c.nombre,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.text),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: LinearProgressIndicator(
+                                          value: c.progreso / 100,
+                                          minHeight: 6,
+                                          backgroundColor: AppColors.surface2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation(color),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: color.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    '${c.progreso}%',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: color,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -539,9 +821,35 @@ class _CategoriasTabState extends State<_CategoriasTab> {
     }
   }
 
+  Future<void> _eliminar(Categoria c) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Eliminar categoría'),
+        content: const Text('¿Querés borrar esta categoría?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Eliminar')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await _db.deleteCategoria(c.id);
+      _cargar();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
+
+    final minutosTotales = _items.fold<int>(0, (a, c) => a + c.minutosObjetivo);
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _crearOEditar(),
@@ -552,28 +860,90 @@ class _CategoriasTabState extends State<_CategoriasTab> {
               texto:
                   'Todavía no definiste categorías con reglas de calendario.\n'
                   'El generador de sesiones las usará en una fase futura.')
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: _items.length,
-              itemBuilder: (ctx, i) {
-                final c = _items[i];
-                return Card(
-                  child: ListTile(
-                    onTap: () => _crearOEditar(existente: c),
-                    title: Text(c.nombre),
-                    subtitle: Text(
-                        '${c.diasList.join(", ")} · ${c.minutosObjetivo} min/semana'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: AppColors.textSecondary),
-                      onPressed: () async {
-                        await _db.deleteCategoria(c.id);
-                        _cargar();
-                      },
-                    ),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.category_outlined,
+                          value: '${_items.length}',
+                          label: 'Categorías',
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.timer_outlined,
+                          value: '$minutosTotales',
+                          label: 'Min/semana',
+                          color: AppColors.warning,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    itemCount: _items.length,
+                    itemBuilder: (ctx, i) {
+                      final c = _items[i];
+                      return Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _crearOEditar(existente: c),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.sm),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        c.nombre,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.text),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: [
+                                          _DetalleChip(
+                                              'Días', c.diasList.join(', ')),
+                                          _DetalleChip('Objetivo',
+                                              '${c.minutosObjetivo} min/sem'),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: AppColors.textSecondary),
+                                  onPressed: () => _eliminar(c),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -593,6 +963,7 @@ class _ProfesoresTabState extends State<_ProfesoresTab> {
   final _db = WolfiaDb.instance;
   final _uuid = const Uuid();
   List<Profesor> _items = [];
+  Map<String, int> _pendientesPorProfesor = {};
   bool _cargando = true;
 
   @override
@@ -603,8 +974,14 @@ class _ProfesoresTabState extends State<_ProfesoresTab> {
 
   Future<void> _cargar() async {
     final items = await _db.getProfesores();
+    final mapa = <String, int>{};
+    for (final p in items) {
+      final recs = await _db.getRecomendaciones(p.id);
+      mapa[p.id] = recs.where((r) => r.estado == 'pendiente').length;
+    }
     setState(() {
       _items = items;
+      _pendientesPorProfesor = mapa;
       _cargando = false;
     });
   }
@@ -668,13 +1045,19 @@ class _ProfesoresTabState extends State<_ProfesoresTab> {
   }
 
   void _abrirRecomendaciones(Profesor profesor) {
-    Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => _RecomendacionesScreen(profesor: profesor)));
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+            builder: (_) => _RecomendacionesScreen(profesor: profesor)))
+        .then((_) => _cargar());
   }
 
   @override
   Widget build(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
+
+    final pendientesTotales =
+        _pendientesPorProfesor.values.fold<int>(0, (a, b) => a + b);
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () => _crearOEditar(),
@@ -682,37 +1065,127 @@ class _ProfesoresTabState extends State<_ProfesoresTab> {
       ),
       body: _items.isEmpty
           ? const _EmptyHint(texto: 'Todavía no cargaste ningún profesor.')
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: _items.length,
-              itemBuilder: (ctx, i) {
-                final p = _items[i];
-                return Card(
-                  child: ListTile(
-                    title: Text(p.nombre),
-                    subtitle: Text(p.contacto ?? 'Sin contacto'),
-                    onTap: () => _abrirRecomendaciones(p),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined,
-                              color: AppColors.textSecondary),
-                          onPressed: () => _crearOEditar(existente: p),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.school_outlined,
+                          value: '${_items.length}',
+                          label: 'Profesores',
+                          color: AppColors.primary,
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: AppColors.textSecondary),
-                          onPressed: () async {
-                            await _db.deleteProfesor(p.id);
-                            _cargar();
-                          },
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.lightbulb_outline,
+                          value: '$pendientesTotales',
+                          label: 'Recom. pendientes',
+                          color: AppColors.warning,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    itemCount: _items.length,
+                    itemBuilder: (ctx, i) {
+                      final p = _items[i];
+                      final pendientes = _pendientesPorProfesor[p.id] ?? 0;
+                      return Card(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _abrirRecomendaciones(p),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.sm),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor:
+                                      AppColors.primary.withOpacity(0.15),
+                                  child: Text(
+                                    p.nombre.isNotEmpty
+                                        ? p.nombre[0].toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.nombre,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.text),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        p.contacto ?? 'Sin contacto',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary),
+                                      ),
+                                      if (pendientes > 0) ...[
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.warning
+                                                .withOpacity(0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            '$pendientes recomendación${pendientes == 1 ? '' : 'es'} pendiente${pendientes == 1 ? '' : 's'}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.warning,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined,
+                                      color: AppColors.textSecondary),
+                                  onPressed: () => _crearOEditar(existente: p),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: AppColors.textSecondary),
+                                  onPressed: () async {
+                                    await _db.deleteProfesor(p.id);
+                                    _cargar();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -790,6 +1263,8 @@ class _RecomendacionesScreenState extends State<_RecomendacionesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pendientes = _items.where((r) => r.estado == 'pendiente').length;
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.profesor.nombre)),
       floatingActionButton:
@@ -799,29 +1274,276 @@ class _RecomendacionesScreenState extends State<_RecomendacionesScreen> {
           : _items.isEmpty
               ? const _EmptyHint(
                   texto: 'Todavía no hay recomendaciones de este profesor.')
-              : ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  itemCount: _items.length,
-                  itemBuilder: (ctx, i) {
-                    final r = _items[i];
-                    return Card(
-                      child: ListTile(
-                        title: Text(r.texto),
-                        subtitle:
-                            Text('Estado: ${r.estado} · toca para cambiar'),
-                        onTap: () => _cambiarEstado(r),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: AppColors.textSecondary),
-                          onPressed: () async {
-                            await _db.deleteRecomendacion(r.id);
-                            _cargar();
-                          },
-                        ),
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.lightbulb_outline,
+                              value: '${_items.length}',
+                              label: 'Total',
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.schedule,
+                              value: '$pendientes',
+                              label: 'Pendientes',
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        itemCount: _items.length,
+                        itemBuilder: (ctx, i) {
+                          final r = _items[i];
+                          return Card(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => _cambiarEstado(r),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.md,
+                                    vertical: AppSpacing.sm),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(r.texto,
+                                              style: const TextStyle(
+                                                  color: AppColors.text)),
+                                          const SizedBox(height: 6),
+                                          _RecomendacionEstadoBadge(r.estado),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: AppColors.textSecondary),
+                                      onPressed: () async {
+                                        await _db.deleteRecomendacion(r.id);
+                                        _cargar();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widgets compartidos (mismo lenguaje visual que repertorio_screen.dart)
+// ---------------------------------------------------------------------------
+
+/// Tarjeta de resumen para el encabezado tipo dashboard.
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _StatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge de estado de un problema, con ícono y color semántico.
+class _EstadoProblemaBadge extends StatelessWidget {
+  final String estado;
+  const _EstadoProblemaBadge(this.estado);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorEstadoProblema(estado);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_iconoEstadoProblema(estado), size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            estado,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge de intensidad de un problema, con ícono y color semántico.
+class _IntensidadBadge extends StatelessWidget {
+  final String intensidad;
+  const _IntensidadBadge(this.intensidad);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorIntensidad(intensidad);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_iconoIntensidad(intensidad), size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            intensidad,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip neutro para mostrar la categoría de un problema.
+class _CategoriaProblemaChip extends StatelessWidget {
+  final String categoria;
+  const _CategoriaProblemaChip(this.categoria);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.label_outline,
+              size: 10, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Text(
+            categoria,
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Badge de estado de una recomendación, con ícono y color semántico.
+class _RecomendacionEstadoBadge extends StatelessWidget {
+  final String estado;
+  const _RecomendacionEstadoBadge(this.estado);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _colorEstadoRecomendacion(estado);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_iconoEstadoRecomendacion(estado), size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$estado · toca para cambiar',
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip genérico label:valor, igual al de repertorio_screen.dart.
+class _DetalleChip extends StatelessWidget {
+  final String label;
+  final String valor;
+  const _DetalleChip(this.label, this.valor);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        '$label: $valor',
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
     );
   }
 }

@@ -38,11 +38,20 @@ class _SesionScreenState extends State<SesionScreen> {
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Text(
-                  'No hay ninguna sesión en curso.\n'
-                  'Generá una desde la pestaña Inicio.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.timer_outlined,
+                        size: 56,
+                        color: AppColors.textSecondary.withOpacity(0.5)),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'No hay ninguna sesión en curso.\n'
+                      'Generá una desde la pestaña Inicio.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
               ),
             )
@@ -52,7 +61,7 @@ class _SesionScreenState extends State<SesionScreen> {
 }
 
 /// Modo de estudio: pantalla enfocada, sin distracciones, con
-/// temporizador por tarea y notas rápidas.
+/// temporizador circular estilo pomodoro y notas rápidas.
 class SesionActivaScreen extends StatefulWidget {
   final String sesionId;
   final bool embebida; // true si va dentro de la pestaña (sin AppBar propia)
@@ -70,8 +79,13 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
   int _indiceActual = 0;
   Timer? _timer;
   int _segundosRestantes = 0;
+  int _segundosTotales = 0;
   bool _corriendo = false;
   bool _cargando = true;
+
+  // Se activa cuando la tarea termina (por tiempo o manualmente),
+  // recién ahí aparece el bloque "¿Cómo salió?".
+  bool _mostrarResultado = false;
 
   @override
   void initState() {
@@ -91,8 +105,10 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
       _tareas = tareas;
       _indiceActual = tareas.indexWhere((t) => !t.completada);
       if (_indiceActual == -1) _indiceActual = 0;
-      _segundosRestantes =
+      _segundosTotales =
           tareas.isEmpty ? 0 : tareas[_indiceActual].minutosPlaneados * 60;
+      _segundosRestantes = _segundosTotales;
+      _mostrarResultado = false;
       _cargando = false;
     });
   }
@@ -103,15 +119,29 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
       setState(() => _corriendo = false);
     } else {
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (_segundosRestantes <= 0) {
+        if (_segundosRestantes <= 1) {
           _timer?.cancel();
-          setState(() => _corriendo = false);
+          setState(() {
+            _segundosRestantes = 0;
+            _corriendo = false;
+            _mostrarResultado = true; // se cumplió el tiempo -> pedir resultado
+          });
           return;
         }
         setState(() => _segundosRestantes--);
       });
       setState(() => _corriendo = true);
     }
+  }
+
+  /// Permite cortar la tarea antes de que se acabe el tiempo y pasar
+  /// directamente a calificar cómo salió.
+  void _terminarAhora() {
+    _timer?.cancel();
+    setState(() {
+      _corriendo = false;
+      _mostrarResultado = true;
+    });
   }
 
   Future<void> _marcarResultado(String resultado) async {
@@ -133,8 +163,10 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
     if (_indiceActual < _tareas.length - 1) {
       setState(() {
         _indiceActual++;
-        _segundosRestantes = _tareas[_indiceActual].minutosPlaneados * 60;
+        _segundosTotales = _tareas[_indiceActual].minutosPlaneados * 60;
+        _segundosRestantes = _segundosTotales;
         _corriendo = false;
+        _mostrarResultado = false;
       });
       _timer?.cancel();
     } else {
@@ -159,7 +191,8 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Sesión finalizada 🎹'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Sesión finalizada 🎉'),
         content:
             Text('${sesion.duracionReal} minutos de estudio. ¡Buen trabajo!'),
         actions: [
@@ -191,6 +224,7 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Nota rápida'),
         content: TextField(controller: ctrl, autofocus: true, maxLines: 3),
         actions: [
@@ -246,75 +280,85 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
     }
 
     final tarea = _tareas[_indiceActual];
+    final progresoSesion =
+        _tareas.isEmpty ? 0.0 : (_indiceActual) / _tareas.length;
+
     final contenido = Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         children: [
+          // Progreso general de la sesión (barra fina arriba, discreta).
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progresoSesion.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: AppColors.surface2,
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Tarea ${_indiceActual + 1} de ${_tareas.length}',
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(tarea.tituloPreparacion,
-              style: Theme.of(context).textTheme.headlineMedium,
-              textAlign: TextAlign.center),
-          if (tarea.tituloSegmento != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(tarea.tituloSegmento!,
-                  style:
-                      const TextStyle(color: AppColors.primary, fontSize: 18)),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-          if (tarea.motivo.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.surface2,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(tarea.motivo,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
-            ),
-          const SizedBox(height: AppSpacing.xxl),
-          Text(
-            _formatoTiempo(_segundosRestantes),
             style: const TextStyle(
-                fontSize: 64,
-                fontWeight: FontWeight.w300,
-                fontFamily: 'monospace'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton.filled(
-                iconSize: 32,
-                onPressed: _toggleTimer,
-                icon: Icon(_corriendo ? Icons.pause : Icons.play_arrow),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              IconButton(
-                iconSize: 28,
-                onPressed: _agregarNota,
-                icon: const Icon(Icons.edit_note),
                 color: AppColors.textSecondary,
-              ),
-            ],
+                fontSize: 13,
+                fontWeight: FontWeight.w500),
           ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Tarjeta con la info de la tarea actual.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                Text(tarea.tituloPreparacion,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center),
+                if (tarea.tituloSegmento != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(tarea.tituloSegmento!,
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500)),
+                  ),
+                if (tarea.motivo.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(tarea.motivo,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
           const SizedBox(height: AppSpacing.xxl),
-          Text('¿Cómo salió?', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.sm,
-            alignment: WrapAlignment.center,
-            children: [
-              _botonResultado('😁', 'excelente'),
-              _botonResultado('🙂', 'bien'),
-              _botonResultado('😐', 'regular'),
-              _botonResultado('🙁', 'difícil'),
-            ],
+
+          // Zona central: timer circular <-> bloque de resultado.
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _mostrarResultado
+                ? _bloqueResultado(context)
+                : _bloqueTimer(context),
           ),
         ],
       ),
@@ -334,6 +378,141 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
     );
   }
 
+  /// Timer circular estilo pomodoro: el anillo se "vacía" a medida que
+  /// pasa el tiempo.
+  Widget _bloqueTimer(BuildContext context) {
+    final progreso =
+        _segundosTotales == 0 ? 0.0 : _segundosRestantes / _segundosTotales;
+
+    return Column(
+      key: const ValueKey('timer'),
+      children: [
+        SizedBox(
+          width: 240,
+          height: 240,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 240,
+                height: 240,
+                child: CircularProgressIndicator(
+                  value: 1,
+                  strokeWidth: 12,
+                  color: AppColors.surface2,
+                ),
+              ),
+              SizedBox(
+                width: 240,
+                height: 240,
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 400),
+                  tween: Tween(begin: progreso, end: progreso),
+                  builder: (context, value, _) => CircularProgressIndicator(
+                    value: value.clamp(0.0, 1.0),
+                    strokeWidth: 12,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: Colors.transparent,
+                    valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                  ),
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatoTiempo(_segundosRestantes),
+                    style: const TextStyle(
+                        fontSize: 52,
+                        fontWeight: FontWeight.w300,
+                        fontFamily: 'monospace'),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _corriendo ? 'En marcha' : 'En pausa',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              iconSize: 26,
+              onPressed: _agregarNota,
+              icon: const Icon(Icons.edit_note),
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            Material(
+              color: AppColors.primary,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _toggleTimer,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Icon(
+                    _corriendo ? Icons.pause : Icons.play_arrow,
+                    size: 34,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            IconButton(
+              iconSize: 26,
+              onPressed: _terminarAhora,
+              icon: const Icon(Icons.check_circle_outline),
+              color: AppColors.textSecondary,
+              tooltip: 'Terminar tarea ahora',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Bloque que pide calificar cómo salió: solo se muestra cuando la
+  /// tarea terminó (por tiempo cumplido o de forma manual).
+  Widget _bloqueResultado(BuildContext context) {
+    return Column(
+      key: const ValueKey('resultado'),
+      children: [
+        Icon(Icons.emoji_events_outlined, size: 44, color: AppColors.primary),
+        const SizedBox(height: AppSpacing.sm),
+        Text('¡Tiempo cumplido!',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text('¿Cómo salió esta tarea?',
+            style: const TextStyle(color: AppColors.textSecondary)),
+        const SizedBox(height: AppSpacing.lg),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          alignment: WrapAlignment.center,
+          children: [
+            _botonResultado('😁', 'excelente'),
+            _botonResultado('🙂', 'bien'),
+            _botonResultado('😐', 'regular'),
+            _botonResultado('🙁', 'difícil'),
+          ],
+        ),
+      ],
+    );
+  }
+
   Future<void> _verPlanSesion() async {
     final ses = await (await _db.database)
         .query('sesiones', where: 'id = ?', whereArgs: [widget.sesionId]);
@@ -346,6 +525,9 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
       context: context,
       backgroundColor: AppColors.surface,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.6,
         expand: false,
@@ -414,9 +596,26 @@ class _SesionActivaScreenState extends State<SesionActivaScreen> {
   }
 
   Widget _botonResultado(String emoji, String valor) {
-    return ActionChip(
-      label: Text('$emoji $valor'),
-      onPressed: () => _marcarResultado(valor),
+    return Material(
+      color: AppColors.surface2,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _marcarResultado(valor),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 28)),
+              const SizedBox(height: 4),
+              Text(valor,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
